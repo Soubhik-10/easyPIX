@@ -1421,6 +1421,82 @@ button.active,
   animation: sprite-hop 1.4s steps(2, end) infinite;
 }
 
+.hero-doodle {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: min(520px, 92%);
+  padding: 18px;
+  transform: rotate(-2deg);
+  border: 6px solid #111827;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow:
+    12px 12px 0 #1d4ed8,
+    24px 24px 0 #111827,
+    0 28px 70px rgba(15, 23, 42, 0.22);
+}
+
+.hero-doodle-board {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+  touch-action: none;
+}
+
+.hero-doodle-pixel {
+  aspect-ratio: 1;
+  min-width: 8px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background:
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%),
+    #f8fafc;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  cursor: crosshair;
+}
+
+.hero-doodle-pixel:hover {
+  outline: 2px solid #111827;
+  outline-offset: -2px;
+}
+
+.hero-doodle-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hero-swatch {
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 3px solid #111827;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(17, 24, 39, 0.2);
+}
+
+.hero-swatch.active {
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(17, 24, 39, 0.24);
+}
+
+.hero-clear {
+  min-height: 28px;
+  margin-left: auto;
+  border: 3px solid #111827;
+  border-radius: 4px;
+  color: #111827;
+  background: #ffffff;
+}
+
 .sprite-pixel {
   aspect-ratio: 1;
   background: transparent;
@@ -1579,6 +1655,7 @@ button.active,
 }
 
 :root[data-theme="dark"] .pixel-card-art,
+:root[data-theme="dark"] .hero-doodle,
 :root[data-theme="dark"] .palette-strip,
 :root[data-theme="dark"] .tiny-pixel-sprite {
   border-color: #e8edf7;
@@ -1590,6 +1667,27 @@ button.active,
     12px 12px 0 #78a6ff,
     24px 24px 0 #e8edf7,
     0 28px 70px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .hero-doodle {
+  box-shadow:
+    12px 12px 0 #78a6ff,
+    24px 24px 0 #e8edf7,
+    0 28px 70px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .hero-doodle-pixel:hover {
+  outline-color: #e8edf7;
+}
+
+:root[data-theme="dark"] .hero-swatch,
+:root[data-theme="dark"] .hero-clear {
+  border-color: #e8edf7;
+}
+
+:root[data-theme="dark"] .hero-clear {
+  color: #e8edf7;
+  background: #0a0f19;
 }
 
 :root[data-theme="dark"] .floating-pixels i,

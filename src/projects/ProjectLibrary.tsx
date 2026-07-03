@@ -1,5 +1,5 @@
-import { ChangeEvent, useRef, useState } from "react";
-import { FolderOpen, Grid3X3, Image, Import, LayoutGrid, Moon, Palette, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, PointerEvent, useRef, useState } from "react";
+import { Eraser, FolderOpen, Grid3X3, Image, Import, LayoutGrid, Moon, Palette, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { importProjectZip } from "./importExport/zip";
 import type { Workspace } from "./types";
@@ -16,6 +16,74 @@ const quickStarts: Array<{
   { workspace: "animation", title: "Animate", description: "Build frame timelines, preview playback, export spritesheets.", icon: Play },
   { workspace: "sandbox", title: "Sandbox", description: "Paint a small scene to see how assets work together.", icon: LayoutGrid },
 ];
+
+const heroColors = ["#111827", "#ffffff", "#38bdf8", "#22c55e", "#facc15", "#fb7185", "#a855f7", "#f97316"];
+const heroSeed = Array.from({ length: 14 * 12 }, (_, index) => {
+  const x = index % 14;
+  const y = Math.floor(index / 14);
+  if (y === 8 && x > 1 && x < 12) return "#22c55e";
+  if (y === 7 && x > 3 && x < 10) return "#22c55e";
+  if (x > 5 && x < 9 && y > 3 && y < 8) return "#facc15";
+  if ((x === 5 || x === 9) && y > 4 && y < 7) return "#fb7185";
+  if (x > 5 && x < 9 && y === 3) return "#111827";
+  if ((x === 6 || x === 8) && y === 5) return "#111827";
+  return "transparent";
+});
+
+const HeroPixelPad = () => {
+  const [pixels, setPixels] = useState<string[]>(heroSeed);
+  const [activeColor, setActiveColor] = useState<string>(heroColors[2]);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  const paint = (index: number) => {
+    setPixels((current) => current.map((color, pixelIndex) => (pixelIndex === index ? activeColor : color)));
+  };
+
+  const startPaint = (event: PointerEvent<HTMLButtonElement>, index: number) => {
+    event.preventDefault();
+    setIsDrawing(true);
+    paint(index);
+  };
+
+  return (
+    <div className="hero-doodle" aria-label="Mini drawable pixel board">
+      <div className="hero-doodle-board">
+        {pixels.map((color, index) => (
+          <button
+            key={index}
+            className="hero-doodle-pixel"
+            style={{ background: color === "transparent" ? undefined : color }}
+            onPointerDown={(event) => startPaint(event, index)}
+            onPointerEnter={() => {
+              if (isDrawing) paint(index);
+            }}
+            onPointerUp={() => setIsDrawing(false)}
+            onPointerCancel={() => setIsDrawing(false)}
+            onPointerLeave={() => {
+              if (!isDrawing) setIsDrawing(false);
+            }}
+            aria-label={`Paint pixel ${index + 1}`}
+          />
+        ))}
+      </div>
+      <div className="hero-doodle-tools">
+        {heroColors.map((color) => (
+          <button
+            key={color}
+            className={activeColor === color ? "active hero-swatch" : "hero-swatch"}
+            style={{ background: color }}
+            onClick={() => setActiveColor(color)}
+            title={color}
+            aria-label={`Use ${color}`}
+          />
+        ))}
+        <button className="hero-clear" onClick={() => setPixels(Array.from({ length: 14 * 12 }, () => "transparent"))}>
+          <Eraser size={15} /> Clear
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const ProjectLibrary = () => {
   const projects = useAppStore((state) => state.projects);
@@ -76,18 +144,14 @@ export const ProjectLibrary = () => {
             </div>
           </section>
 
-          <section className="pixel-showcase" aria-hidden="true">
+          <section className="pixel-showcase">
             <div className="floating-pixels">
               {["#38bdf8", "#22c55e", "#facc15", "#fb7185", "#a855f7", "#f97316"].map((color, index) => (
                 <i key={color} style={{ background: color, animationDelay: `${index * 180}ms` }} />
               ))}
             </div>
             <div className="pixel-sun"></div>
-            <div className="pixel-card-art">
-              {Array.from({ length: 168 }, (_, index) => (
-                <span key={index} className={`art-pixel art-${(index * 5 + Math.floor(index / 14)) % 11}`} />
-              ))}
-            </div>
+            <HeroPixelPad />
             <div className="tiny-pixel-sprite">
               {Array.from({ length: 64 }, (_, index) => (
                 <i key={index} className={`sprite-pixel sprite-${(index + Math.floor(index / 8) * 3) % 9}`} />
