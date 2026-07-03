@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Play, Plus, Save, Sparkles, Upload } from "lucide-react";
 import { useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
@@ -8,7 +8,7 @@ import { TilesetWorkspace } from "../tilesets/TilesetWorkspace";
 import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
-import { downloadBlob, exportProjectZip } from "../projects/importExport/zip";
+import { downloadBlob, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
   const project = useAppStore((state) => state.project);
@@ -16,6 +16,11 @@ export const App = () => {
   const theme = useAppStore((state) => state.theme);
   const setWorkspace = useAppStore((state) => state.setWorkspace);
   const persist = useAppStore((state) => state.persist);
+  const saveStatus = useAppStore((state) => state.saveStatus);
+  const lastSavedAt = useAppStore((state) => state.lastSavedAt);
+  const saveError = useAppStore((state) => state.saveError);
+  const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported" | "error">("idle");
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const applyTheme = () => {
@@ -89,9 +94,29 @@ export const App = () => {
   if (!project) return <ProjectLibrary />;
 
   const exportZip = async () => {
-    const blob = await exportProjectZip(project);
-    downloadBlob(blob, `${project.name.replace(/\s+/g, "-").toLowerCase()}.pixelzip`);
+    setExportStatus("exporting");
+    setExportError(null);
+    try {
+      const errors = validateProjectForExport(project);
+      if (errors.length) throw new Error(errors.join("\n"));
+      await persist();
+      const blob = await exportProjectZip(useAppStore.getState().project ?? project);
+      downloadBlob(blob, `${project.name.replace(/\s+/g, "-").toLowerCase()}.pixelzip`);
+      setExportStatus("exported");
+    } catch (error) {
+      setExportStatus("error");
+      setExportError(error instanceof Error ? error.message : "Export failed");
+    }
   };
+
+  const saveLabel =
+    saveStatus === "saving"
+      ? "Saving..."
+      : saveStatus === "saved" && lastSavedAt
+        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+        : saveStatus === "error"
+          ? "Save failed"
+          : "Unsaved changes";
 
   return (
     <main className="app-shell">
@@ -124,9 +149,14 @@ export const App = () => {
           <button onClick={() => void persist()} title="Save now">
             <Save size={16} /> Save
           </button>
-          <button onClick={() => void exportZip()} title="Export project bundle">
-            <Download size={16} /> Export
+          <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"} title={saveError ?? "Local autosave status"}>
+            {saveLabel}
+          </span>
+          <button onClick={() => void exportZip()} disabled={exportStatus === "exporting"} title={exportError ?? "Export project bundle"}>
+            <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : "Export"}
           </button>
+          {exportStatus === "exported" && <span className="status-pill">Export ready</span>}
+          {exportStatus === "error" && <span className="status-pill status-error" title={exportError ?? undefined}>Export failed</span>}
           <select value={theme} onChange={(event) => useAppStore.getState().setTheme(event.target.value as "system" | "light" | "dark")} title="Theme">
             <option value="system">System</option>
             <option value="light">Light</option>

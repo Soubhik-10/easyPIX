@@ -1,4 +1,4 @@
-import { ChangeEvent, MouseEvent, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, PointerEvent, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -85,7 +85,7 @@ export const EditorWorkspace = () => {
     if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection });
   }, [asset, zoom, showGrid, selection]);
 
-  const pixelFromEvent = (event: MouseEvent<HTMLCanvasElement>) => {
+  const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
       x: Math.floor((event.clientX - rect.left) / zoom),
@@ -93,21 +93,26 @@ export const EditorWorkspace = () => {
     };
   };
 
-  const onPointerDown = (event: MouseEvent<HTMLCanvasElement>) => {
+  const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     const point = pixelFromEvent(event);
     useAppStore.getState().beginStroke(point.x, point.y);
     useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
-  const onPointerMove = (event: MouseEvent<HTMLCanvasElement>) => {
+  const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
     if (event.buttons !== 1) return;
+    event.preventDefault();
     const point = pixelFromEvent(event);
     if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
-  const onPointerUp = (event: MouseEvent<HTMLCanvasElement>) => {
+  const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
     const point = pixelFromEvent(event);
     useAppStore.getState().endStroke(point.x, point.y);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
   const onImportAssets = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +195,15 @@ export const EditorWorkspace = () => {
           </button>
         </div>
         <div className="canvas-scroll">
-          <canvas ref={canvasRef} className="pixel-canvas" onMouseDown={onPointerDown} onMouseMove={onPointerMove} onMouseUp={onPointerUp} />
+          <canvas
+            ref={canvasRef}
+            className="pixel-canvas"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onContextMenu={(event) => event.preventDefault()}
+          />
         </div>
         <div className="actual-preview">
           <span>Actual size</span>

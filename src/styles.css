@@ -1004,6 +1004,29 @@ button.active,
   box-shadow: var(--app-shadow);
 }
 
+.pixel-canvas {
+  touch-action: none;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-muted);
+  background: var(--app-surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-error {
+  border-color: color-mix(in srgb, var(--app-danger) 50%, var(--app-border));
+  color: var(--app-danger);
+  background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
+}
+
 .hero-kicker {
   color: var(--app-accent);
 }

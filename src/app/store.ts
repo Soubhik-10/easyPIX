@@ -23,6 +23,7 @@ import {
 } from "../editor/tools/pixelOps";
 
 type Clip = { width: number; height: number; pixels: string[] };
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type AppState = {
   projects: PixelProject[];
@@ -47,10 +48,15 @@ type AppState = {
   clipboard: Clip | null;
   history: PixelProject[];
   future: PixelProject[];
+  saveStatus: SaveStatus;
+  lastSavedAt: string | null;
+  saveError: string | null;
   isPlaying: boolean;
   onionSkin: boolean;
   fps: number;
   strokeStart: { x: number; y: number } | null;
+  strokeLast: { x: number; y: number } | null;
+  strokeHistoryBase: PixelProject | null;
   refreshProjects: () => Promise<void>;
   createNewProject: (name: string) => Promise<void>;
   openProject: (id: string) => Promise<void>;
@@ -115,12 +121,16 @@ type AppState = {
   importProject: (project: PixelProject) => Promise<void>;
 };
 
-const withProject = (state: AppState, recipe: (project: PixelProject) => PixelProject) => {
+const withProject = (state: AppState, recipe: (project: PixelProject) => PixelProject, historyBase?: PixelProject | null) => {
   if (!state.project) return {};
+  const base = historyBase ?? state.project;
+  const history = state.history[0] === base ? state.history : [base, ...state.history].slice(0, 80);
   return {
     project: recipe(state.project),
-    history: [state.project, ...state.history].slice(0, 80),
+    history,
     future: [],
+    saveStatus: "idle" as const,
+    saveError: null,
   };
 };
 
@@ -132,6 +142,31 @@ const updateActiveAsset = (project: PixelProject, assetId: string | null, recipe
 
 const activeAsset = (state: AppState) => state.project?.assets.find((asset) => asset.id === state.activeAssetId) ?? null;
 const activeLayer = (state: AppState) => activeAsset(state)?.layers.find((layer) => layer.id === state.activeLayerId) ?? null;
+const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"];
+const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse"];
+
+const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
+  const points: { x: number; y: number }[] = [];
+  let dx = Math.abs(x1 - x0);
+  let sx = x0 < x1 ? 1 : -1;
+  let dy = -Math.abs(y1 - y0);
+  let sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  while (true) {
+    points.push({ x: x0, y: y0 });
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x0 += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+  return points;
+};
 
 const shadeColor = (hex: string) => {
   if (!hex.startsWith("#") || hex.length !== 7) return "rgba(0,0,0,0.28)";
@@ -190,10 +225,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   clipboard: null,
   history: [],
   future: [],
+  saveStatus: "idle",
+  lastSavedAt: null,
+  saveError: null,
   isPlaying: false,
   onionSkin: true,
   fps: 8,
   strokeStart: null,
+  strokeLast: null,
+  strokeHistoryBase: null,
 
   refreshProjects: async () => set({ projects: await listProjects() }),
   createNewProject: async (name) => {
@@ -209,6 +249,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeSceneId: project.scenes[0]?.id ?? null,
       history: [],
       future: [],
+      saveStatus: "saved",
+      lastSavedAt: project.updatedAt,
+      saveError: null,
     });
   },
   openProject: async (id) => {
@@ -223,6 +266,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeSceneId: project.scenes[0]?.id ?? null,
       history: [],
       future: [],
+      saveStatus: "saved",
+      lastSavedAt: project.updatedAt,
+      saveError: null,
     });
   },
   removeProject: async (id) => {
@@ -232,8 +278,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   persist: async () => {
     const project = get().project;
     if (!project) return;
-    await saveProject(project);
-    set({ projects: await listProjects() });
+    set({ saveStatus: "saving", saveError: null });
+    try {
+      await saveProject(project);
+      set({ projects: await listProjects(), saveStatus: "saved", lastSavedAt: new Date().toISOString(), saveError: null });
+    } catch (error) {
+      set({ saveStatus: "error", saveError: error instanceof Error ? error.message : "Save failed" });
+      throw error;
+    }
   },
   setWorkspace: (workspace) => set({ workspace }),
   setTool: (tool) => set({ tool }),
@@ -249,7 +301,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setZoom: (zoom) => set({ zoom }),
   toggleGrid: () => set({ showGrid: !get().showGrid }),
   setSelection: (selection) => set({ selection }),
-  beginStroke: (x, y) => set({ strokeStart: { x, y } }),
+  beginStroke: (x, y) => {
+    const state = get();
+    set({
+      strokeStart: { x, y },
+      strokeLast: { x, y },
+      strokeHistoryBase: state.project && mutatingPointerTools.includes(state.tool) ? state.project : null,
+    });
+  },
   applyToolAt: (x, y) => {
     const state = get();
     const asset = activeAsset(state);
@@ -265,32 +324,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ selection: { x, y, width: 1, height: 1 } });
       return;
     }
-    if (!["pencil", "eraser", "fill", "shadow", "spray", "dither", "replace", "lighten", "darken"].includes(state.tool)) return;
-    set(
-      withProject(state, (project) =>
+    if (![...strokeTools, "fill"].includes(state.tool)) return;
+    const points = state.strokeLast && strokeTools.includes(state.tool) ? linePoints(state.strokeLast.x, state.strokeLast.y, x, y) : [{ x, y }];
+    set({
+      ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
           ...entry,
           layers: entry.layers.map((item) =>
-            item.id === layer.id ? { ...item, pixels: paintAt(item.pixels, entry.width, entry.height, x, y, state) } : item,
+            item.id === layer.id
+              ? { ...item, pixels: points.reduce((pixels, point) => paintAt(pixels, entry.width, entry.height, point.x, point.y, state), item.pixels) }
+              : item,
           ),
         })),
-      ),
-    );
+      state.strokeHistoryBase),
+      strokeLast: { x, y },
+    });
   },
   endStroke: (x, y) => {
     const state = get();
     const asset = activeAsset(state);
     const layer = activeLayer(state);
     const start = state.strokeStart;
-    if (!asset || !layer || !start) return set({ strokeStart: null });
+    if (!asset || !layer || !start) return set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
     if (state.tool === "select") {
       const left = Math.min(start.x, x);
       const top = Math.min(start.y, y);
-      set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 }, strokeStart: null });
+      set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 }, strokeStart: null, strokeLast: null, strokeHistoryBase: null });
       return;
     }
     const drawTools = ["line", "rect", "ellipse"];
-    if (!drawTools.includes(state.tool)) return set({ strokeStart: null });
+    if (!drawTools.includes(state.tool)) return set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
     set({
       ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
@@ -306,8 +369,10 @@ export const useAppStore = create<AppState>((set, get) => ({
             return { ...item, pixels };
           }),
         })),
-      ),
+      state.strokeHistoryBase),
       strokeStart: null,
+      strokeLast: null,
+      strokeHistoryBase: null,
     });
   },
   selectAsset: (id) => {
@@ -589,7 +654,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSceneLayer: (layer) => set(withProject(get(), (project) => ({ ...project, scenes: project.scenes.map((scene) => (scene.id === get().activeSceneId ? { ...scene, activeLayer: layer } : scene)) }))),
   importProject: async (project) => {
     await saveProject(project);
-    set({ project, projects: await listProjects(), activeAssetId: project.assets[0]?.id ?? null, activeLayerId: project.assets[0]?.layers[0]?.id ?? null });
+    set({
+      project,
+      projects: await listProjects(),
+      activeAssetId: project.assets[0]?.id ?? null,
+      activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
+      saveStatus: "saved",
+      lastSavedAt: project.updatedAt,
+      saveError: null,
+    });
   },
 }));
 

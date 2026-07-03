@@ -32,7 +32,25 @@ const drawLayer = (ctx: CanvasRenderingContext2D, layer: PixelLayer, width: numb
   ctx.restore();
 };
 
+export const validateProjectForExport = (project: PixelProject) => {
+  const errors: string[] = [];
+  if (!project.name.trim()) errors.push("Project name is empty.");
+  if (!project.assets.length) errors.push("Project has no assets.");
+  project.assets.forEach((asset) => {
+    if (asset.width < 1 || asset.height < 1) errors.push(`${asset.name} has an invalid canvas size.`);
+    if (!asset.layers.length) errors.push(`${asset.name} has no layers.`);
+    asset.layers.forEach((layer) => {
+      if (layer.pixels.length !== asset.width * asset.height) {
+        errors.push(`${asset.name} / ${layer.name} has ${layer.pixels.length} pixels, expected ${asset.width * asset.height}.`);
+      }
+    });
+  });
+  return errors;
+};
+
 export const exportProjectZip = async (project: PixelProject) => {
+  const errors = validateProjectForExport(project);
+  if (errors.length) throw new Error(errors.join("\n"));
   const zip = new JSZip();
   zip.file("project.json", JSON.stringify(project, null, 2));
   project.palettes.forEach((palette) => {
@@ -64,7 +82,7 @@ export const downloadBlob = (blob: Blob, filename: string) => {
   link.href = url;
   link.download = filename;
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 export const exportAssetPng = (asset: PixelAsset, scale = 1) => {
