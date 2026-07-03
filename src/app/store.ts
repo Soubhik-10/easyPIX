@@ -145,6 +145,19 @@ const activeLayer = (state: AppState) => activeAsset(state)?.layers.find((layer)
 const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"];
 const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse"];
 
+const restoredIds = (snapshot: PixelProject, state: AppState) => {
+  const asset = snapshot.assets.find((entry) => entry.id === state.activeAssetId) ?? snapshot.assets[0] ?? null;
+  const layer = asset?.layers.find((entry) => entry.id === state.activeLayerId) ?? asset?.layers[0] ?? null;
+  const frame = asset?.frames.find((entry) => entry.id === state.activeFrameId) ?? asset?.frames[0] ?? null;
+  return {
+    activeAssetId: asset?.id ?? null,
+    activeLayerId: layer?.id ?? null,
+    activeFrameId: frame?.id ?? null,
+    activeTilesetId: snapshot.tilesets.find((entry) => entry.id === state.activeTilesetId)?.id ?? snapshot.tilesets[0]?.id ?? null,
+    activeSceneId: snapshot.scenes.find((entry) => entry.id === state.activeSceneId)?.id ?? snapshot.scenes[0]?.id ?? null,
+  };
+};
+
 const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   const points: { x: number; y: number }[] = [];
   let dx = Math.abs(x1 - x0);
@@ -600,13 +613,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const previous = state.history[0];
     if (!previous || !state.project) return;
-    set({ project: previous, history: state.history.slice(1), future: [state.project, ...state.future] });
+    set({
+      project: previous,
+      ...restoredIds(previous, state),
+      history: state.history.slice(1),
+      future: [state.project, ...state.future],
+      strokeStart: null,
+      strokeLast: null,
+      strokeHistoryBase: null,
+      saveStatus: "idle",
+      saveError: null,
+    });
   },
   redo: () => {
     const state = get();
     const next = state.future[0];
     if (!next || !state.project) return;
-    set({ project: next, future: state.future.slice(1), history: [state.project, ...state.history] });
+    set({
+      project: next,
+      ...restoredIds(next, state),
+      future: state.future.slice(1),
+      history: [state.project, ...state.history],
+      strokeStart: null,
+      strokeLast: null,
+      strokeHistoryBase: null,
+      saveStatus: "idle",
+      saveError: null,
+    });
   },
   addPaletteColor: (color) =>
     set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: [...new Set([...palette.colors, color])] } : palette)) }))),

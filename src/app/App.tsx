@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Play, Plus, Save, Sparkles, Upload } from "lucide-react";
+import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
 import { useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
 import { EditorWorkspace } from "../editor/EditorWorkspace";
@@ -19,6 +19,8 @@ export const App = () => {
   const saveStatus = useAppStore((state) => state.saveStatus);
   const lastSavedAt = useAppStore((state) => state.lastSavedAt);
   const saveError = useAppStore((state) => state.saveError);
+  const canUndo = useAppStore((state) => state.history.length > 0);
+  const canRedo = useAppStore((state) => state.future.length > 0);
   const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -49,21 +51,25 @@ export const App = () => {
       const store = useAppStore.getState();
       const target = event.target as HTMLElement | null;
       const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
+      const key = event.key.toLowerCase();
       if (isTyping && !(event.ctrlKey || event.metaKey)) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      if ((event.ctrlKey || event.metaKey) && (key === "z" || event.code === "KeyZ")) {
         event.preventDefault();
         event.shiftKey ? store.redo() : store.undo();
+        return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+      if ((event.ctrlKey || event.metaKey) && (key === "y" || event.code === "KeyY")) {
         event.preventDefault();
         store.redo();
+        return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") store.copy();
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x") store.cut();
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") store.paste();
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+      if ((event.ctrlKey || event.metaKey) && key === "c") store.copy();
+      if ((event.ctrlKey || event.metaKey) && key === "x") store.cut();
+      if ((event.ctrlKey || event.metaKey) && key === "v") store.paste();
+      if ((event.ctrlKey || event.metaKey) && key === "a") {
         event.preventDefault();
         store.selectAll();
+        return;
       }
       if ((event.ctrlKey || event.metaKey) && (event.key === "+" || event.key === "=")) {
         event.preventDefault();
@@ -75,15 +81,15 @@ export const App = () => {
       }
       if (event.key === "Escape") store.deselect();
       if (event.key === "Delete" || event.key === "Backspace") store.deleteSelection();
-      if (event.key.toLowerCase() === "b") store.setTool("pencil");
-      if (event.key.toLowerCase() === "e") store.setTool("eraser");
-      if (event.key.toLowerCase() === "g") store.setTool("fill");
-      if (event.key.toLowerCase() === "i") store.setTool("picker");
-      if (event.key.toLowerCase() === "a") store.setTool("spray");
-      if (event.key.toLowerCase() === "r") store.setTool("replace");
-      if (event.key.toLowerCase() === "l") store.setTool("lighten");
-      if (event.key.toLowerCase() === "d") store.setTool("darken");
-      if (event.key.toLowerCase() === "m") store.toggleMirrorX();
+      if (key === "b") store.setTool("pencil");
+      if (key === "e") store.setTool("eraser");
+      if (key === "g") store.setTool("fill");
+      if (key === "i") store.setTool("picker");
+      if (key === "a") store.setTool("spray");
+      if (key === "r") store.setTool("replace");
+      if (key === "l") store.setTool("lighten");
+      if (key === "d") store.setTool("darken");
+      if (key === "m") store.toggleMirrorX();
       if (event.key === "[") store.setBrushSize(Math.max(1, store.brushSize - 1));
       if (event.key === "]") store.setBrushSize(Math.min(12, store.brushSize + 1));
     };
@@ -146,6 +152,12 @@ export const App = () => {
           </button>
         </nav>
         <div className="topbar-actions">
+          <button onClick={() => useAppStore.getState().undo()} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <Undo2 size={16} /> Undo
+          </button>
+          <button onClick={() => useAppStore.getState().redo()} disabled={!canRedo} title="Redo (Ctrl+Y)">
+            <Redo2 size={16} /> Redo
+          </button>
           <button onClick={() => void persist()} title="Save now">
             <Save size={16} /> Save
           </button>
