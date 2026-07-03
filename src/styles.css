@@ -2155,3 +2155,45 @@ input.range-fill::-moz-range-thumb {
   background: var(--app-accent-strong);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.24);
 }
+
+.hero-copy-block {
+  gap: 18px;
+  padding: clamp(8px, 2vw, 24px) 0;
+}
+
+.hero-copy-block h1 {
+  margin-bottom: 4px;
+  line-height: 0.95;
+}
+
+.hero-copy-block h1 span {
+  display: inline-block;
+  padding-bottom: 0.08em;
+}
+
+.hero-copy-block p {
+  max-width: 680px;
+  padding-top: 4px;
+}
+
+@media (max-width: 1100px) {
+  .hero-content {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1fr);
+    gap: 34px;
+  }
+
+  .hero-copy-block h1 {
+    font-size: clamp(56px, 11vw, 108px);
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-copy-block {
+    padding-top: 14px;
+  }
+
+  .hero-copy-block h1 {
+    font-size: clamp(54px, 18vw, 88px);
+    line-height: 1;
+  }
+}
