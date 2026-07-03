@@ -105,7 +105,7 @@ export const renderTilesheet = (canvas: HTMLCanvasElement, assets: PixelAsset[],
   });
 };
 
-export const renderScene = (canvas: HTMLCanvasElement, scene: Scene, assets: PixelAsset[], scale = 2) => {
+export const renderScene = (canvas: HTMLCanvasElement, scene: Scene, assets: PixelAsset[], scale = 2, options: { grid?: boolean } = {}) => {
   canvas.width = scene.width * scene.tileSize * scale;
   canvas.height = scene.height * scene.tileSize * scale;
   const ctx = canvas.getContext("2d")!;
@@ -119,12 +119,14 @@ export const renderScene = (canvas: HTMLCanvasElement, scene: Scene, assets: Pix
       if (!asset) return;
       const x = (index % scene.width) * scene.tileSize * scale;
       const y = Math.floor(index / scene.width) * scene.tileSize * scale;
+      const assetScale = Math.max(1, (scene.tileSize / Math.max(asset.width, asset.height)) * scale);
       ctx.save();
       ctx.translate(x, y);
-      asset.layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
+      asset.layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, assetScale));
       ctx.restore();
     });
   });
+  if (options.grid === false) return;
   ctx.strokeStyle = "rgba(31, 41, 55, 0.16)";
   for (let x = 0; x <= scene.width; x += 1) {
     ctx.beginPath();

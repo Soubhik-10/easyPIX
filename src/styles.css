@@ -464,6 +464,10 @@ canvas {
   box-shadow: 0 12px 26px rgba(36, 45, 38, 0.11);
 }
 
+.sandbox-stage canvas {
+  touch-action: none;
+}
+
 .actual-preview {
   display: flex;
   align-items: center;
@@ -1970,6 +1974,19 @@ button.active,
 
 .template-grid button {
   justify-content: flex-start;
+}
+
+.scene-brush-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.scene-brush {
+  justify-content: flex-start;
+  min-height: 38px;
+  padding: 0 10px;
 }
 
 .export-controls {

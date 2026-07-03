@@ -27,7 +27,7 @@ export const createAsset = (name = "Untitled Sprite", width = 64, height = 64): 
   };
 };
 
-export type TemplateKind = "grass" | "flower" | "water" | "path" | "coin" | "hero";
+export type TemplateKind = "grass" | "flower" | "water" | "path" | "tree" | "bush" | "rock" | "shadow" | "coin" | "hero";
 
 const putPixel = (pixels: string[], width: number, x: number, y: number, color: string) => {
   pixels[y * width + x] = color;
@@ -47,6 +47,10 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
     flower: "Template Flower Tile",
     water: "Template Water Tile",
     path: "Template Dirt Path",
+    tree: "Template Tree Prop",
+    bush: "Template Bush Prop",
+    rock: "Template Rock Prop",
+    shadow: "Template Soft Shadow",
     coin: "Template Coin",
     hero: "Template Tiny Hero",
   };
@@ -78,6 +82,43 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
       const left = Math.max(0, 4 - Math.floor(y / 6));
       const right = Math.min(size - 1, 11 + Math.floor(y / 6));
       for (let x = left; x <= right; x += 1) putPixel(pixels, size, x, y, (x + y) % 4 === 0 ? "#f5c16c" : "#c77d3b");
+    }
+  }
+
+  if (kind === "tree") {
+    fillRect(pixels, size, 7, 9, 3, 5, "#6b3f2a");
+    fillRect(pixels, size, 5, 4, 7, 6, "#3f6f34");
+    fillRect(pixels, size, 3, 6, 11, 4, "#5a8f3d");
+    fillRect(pixels, size, 6, 2, 5, 4, "#5a8f3d");
+    putPixel(pixels, size, 4, 5, "#9bd16f");
+    putPixel(pixels, size, 10, 4, "#9bd16f");
+    putPixel(pixels, size, 12, 7, "#2f5f2c");
+  }
+
+  if (kind === "bush") {
+    fillRect(pixels, size, 4, 8, 9, 4, "#3f6f34");
+    fillRect(pixels, size, 3, 9, 11, 3, "#5a8f3d");
+    fillRect(pixels, size, 6, 6, 5, 4, "#5a8f3d");
+    putPixel(pixels, size, 5, 7, "#9bd16f");
+    putPixel(pixels, size, 11, 9, "#9bd16f");
+    putPixel(pixels, size, 8, 10, "#2f5f2c");
+  }
+
+  if (kind === "rock") {
+    fillRect(pixels, size, 4, 8, 9, 4, "#7b8794");
+    fillRect(pixels, size, 5, 6, 7, 3, "#94a3b8");
+    putPixel(pixels, size, 6, 7, "#cbd5e1");
+    putPixel(pixels, size, 10, 8, "#64748b");
+    putPixel(pixels, size, 12, 10, "#475569");
+  }
+
+  if (kind === "shadow") {
+    for (let y = 9; y < 14; y += 1) {
+      for (let x = 3; x < 13; x += 1) {
+        const dx = (x - 7.5) / 5.4;
+        const dy = (y - 11.5) / 2.2;
+        if (dx * dx + dy * dy <= 1) putPixel(pixels, size, x, y, "rgba(31, 41, 55, 0.28)");
+      }
     }
   }
 
@@ -125,9 +166,9 @@ export const createScene = (tileSize = 32): Scene => ({
   tileSize,
   activeLayer: "ground",
   layers: {
-    ground: Array.from({ length: 160 }, () => null),
-    objects: Array.from({ length: 160 }, () => null),
-    overlay: Array.from({ length: 160 }, () => null),
+    ground: Array.from({ length: 20 * 14 }, () => null),
+    objects: Array.from({ length: 20 * 14 }, () => null),
+    overlay: Array.from({ length: 20 * 14 }, () => null),
   },
 });
 

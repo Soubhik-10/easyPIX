@@ -24,6 +24,7 @@ import {
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SceneBrush = "asset" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
 
 type AppState = {
   projects: PixelProject[];
@@ -34,6 +35,7 @@ type AppState = {
   activeFrameId: string | null;
   activeTilesetId: string | null;
   activeSceneId: string | null;
+  sceneBrush: SceneBrush;
   tool: ToolId;
   theme: ThemePreference;
   color: string;
@@ -117,6 +119,8 @@ type AppState = {
   toggleOnionSkin: () => void;
   setFps: (fps: number) => void;
   paintSceneTile: (x: number, y: number) => void;
+  paintSceneBrush: (x: number, y: number) => void;
+  setSceneBrush: (brush: SceneBrush) => void;
   setSceneLayer: (layer: SceneLayer) => void;
   importProject: (project: PixelProject) => Promise<void>;
 };
@@ -157,6 +161,34 @@ const restoredIds = (snapshot: PixelProject, state: AppState) => {
     activeSceneId: snapshot.scenes.find((entry) => entry.id === state.activeSceneId)?.id ?? snapshot.scenes[0]?.id ?? null,
   };
 };
+
+const ensureTemplateAsset = (project: PixelProject, kind: TemplateKind) => {
+  const template = createTemplateAsset(kind);
+  const existing = project.assets.find((asset) => asset.name === template.name);
+  if (existing) return { project, assetId: existing.id };
+  const asset = { ...template, paletteId: project.palettes[0]?.id };
+  return {
+    project: {
+      ...project,
+      assets: [...project.assets, asset],
+      tilesets: project.tilesets.map((tileset, index) =>
+        index === 0 ? { ...tileset, assetIds: [...new Set([...tileset.assetIds, asset.id])] } : tileset,
+      ),
+    },
+    assetId: asset.id,
+  };
+};
+
+const layerForSceneBrush = (brush: SceneBrush, activeLayer: SceneLayer): SceneLayer => {
+  if (brush === "asset") return activeLayer;
+  if (brush === "grass" || brush === "path" || brush === "water") return "ground";
+  if (brush === "shadow") return "overlay";
+  return "objects";
+};
+
+const brushNeedsShadow = (brush: SceneBrush) => brush === "tree" || brush === "bush" || brush === "rock";
+const sceneCells = (scene: { width: number; height: number }, cells: (string | null)[]) =>
+  Array.from({ length: scene.width * scene.height }, (_, index) => cells[index] ?? null);
 
 const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   const points: { x: number; y: number }[] = [];
@@ -224,6 +256,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeFrameId: null,
   activeTilesetId: null,
   activeSceneId: null,
+  sceneBrush: "asset",
   tool: "pencil",
   theme: (localStorage.getItem("pixel-editor-theme") as ThemePreference | null) ?? "system",
   color: "#1f1f29",
@@ -679,11 +712,58 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...project,
         scenes: project.scenes.map((scene) => {
           if (scene.id !== get().activeSceneId) return scene;
+          if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return scene;
           const index = y * scene.width + x;
-          return { ...scene, layers: { ...scene.layers, [scene.activeLayer]: scene.layers[scene.activeLayer].map((value, i) => (i === index ? get().activeAssetId : value)) } };
+          const activeCells = sceneCells(scene, scene.layers[scene.activeLayer]);
+          return { ...scene, layers: { ...scene.layers, [scene.activeLayer]: activeCells.map((value, i) => (i === index ? get().activeAssetId : value)) } };
         }),
       })),
     ),
+  paintSceneBrush: (x, y) =>
+    set(
+      withProject(get(), (project) => {
+        const state = get();
+        const sceneBrush = state.sceneBrush;
+        let nextProject = project;
+        let assetId = state.activeAssetId;
+        let shadowAssetId: string | null = null;
+
+        if (sceneBrush !== "asset") {
+          const ensured = ensureTemplateAsset(nextProject, sceneBrush);
+          nextProject = ensured.project;
+          assetId = ensured.assetId;
+        }
+        if (brushNeedsShadow(sceneBrush)) {
+          const ensuredShadow = ensureTemplateAsset(nextProject, "shadow");
+          nextProject = ensuredShadow.project;
+          shadowAssetId = ensuredShadow.assetId;
+        }
+
+        if (!assetId) return nextProject;
+
+        return {
+          ...nextProject,
+          scenes: nextProject.scenes.map((scene) => {
+            if (scene.id !== state.activeSceneId) return scene;
+            if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return scene;
+            const index = y * scene.width + x;
+            const targetLayer = layerForSceneBrush(sceneBrush, scene.activeLayer);
+            const normalizedLayers = {
+              ground: sceneCells(scene, scene.layers.ground),
+              objects: sceneCells(scene, scene.layers.objects),
+              overlay: sceneCells(scene, scene.layers.overlay),
+            };
+            const layers = {
+              ...normalizedLayers,
+              [targetLayer]: normalizedLayers[targetLayer].map((value, i) => (i === index ? assetId : value)),
+            };
+            if (shadowAssetId) layers.overlay = layers.overlay.map((value, i) => (i === index ? shadowAssetId : value));
+            return { ...scene, activeLayer: targetLayer, layers };
+          }),
+        };
+      }),
+    ),
+  setSceneBrush: (sceneBrush) => set({ sceneBrush }),
   setSceneLayer: (layer) => set(withProject(get(), (project) => ({ ...project, scenes: project.scenes.map((scene) => (scene.id === get().activeSceneId ? { ...scene, activeLayer: layer } : scene)) }))),
   importProject: async (project) => {
     await saveProject(project);

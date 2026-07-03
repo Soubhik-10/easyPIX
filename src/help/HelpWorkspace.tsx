@@ -33,8 +33,8 @@ const manualSections = [
   },
   {
     icon: BookOpen,
-    title: "Sandbox",
-    body: "Paint your current assets into ground, object, and overlay layers to test how sprites, props, paths, water, and shadows look together in a scene.",
+    title: "Scene Creator",
+    body: "Use Sandbox brushes for grass, path, water, trees, bushes, flowers, rocks, and shadows. Paint a quick cozy scene, then export it as PNG or JSON.",
   },
   {
     icon: Download,
