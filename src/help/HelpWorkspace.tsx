@@ -39,7 +39,7 @@ const manualSections = [
   {
     icon: Play,
     title: "Animate",
-    body: "Add blank frames or duplicate the active frame. Each frame has real cel pixels per layer, so edits stay on the selected frame. Set duration in milliseconds, preview playback, and export a spritesheet.",
+    body: "Add blank frames or duplicate the active frame. Each frame has real cel pixels per layer, so edits stay on the selected frame. Set duration, preview playback, and export spritesheets, JSON, or browser-supported MP4/WebM video.",
   },
   {
     icon: BookOpen,

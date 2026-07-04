@@ -33,6 +33,8 @@ export const AnimationWorkspace = () => {
   const onionSkin = useAppStore((state) => state.onionSkin);
   const fps = useAppStore((state) => state.fps);
   const [frameIndex, setFrameIndex] = useState(Math.max(0, asset.frames.findIndex((frame) => frame.id === activeFrameId)));
+  const [videoStatus, setVideoStatus] = useState<"idle" | "exporting" | "ready" | "error">("idle");
+  const [videoMessage, setVideoMessage] = useState("");
 
   const exportSpritesheet = () => {
     const canvas = document.createElement("canvas");
@@ -49,6 +51,72 @@ export const AnimationWorkspace = () => {
     canvas.toBlob((blob) => {
       if (blob) downloadBlob(blob, `${asset.name}-spritesheet.png`);
     }, "image/png");
+  };
+
+  const drawFrameToCanvas = (canvas: HTMLCanvasElement, frameId: string, scale: number) => {
+    canvas.width = asset.width * scale;
+    canvas.height = asset.height * scale;
+    const ctx = canvas.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.scale(scale, scale);
+    const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
+    layersForFrame(asset, frame?.id, frame?.layerIds).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, 1));
+    ctx.restore();
+  };
+
+  const exportVideo = async () => {
+    if (!("MediaRecorder" in window)) {
+      setVideoStatus("error");
+      setVideoMessage("Video export is not supported in this browser.");
+      return;
+    }
+    setVideoStatus("exporting");
+    setVideoMessage("Rendering animation video...");
+    const mimeType = [
+      "video/mp4;codecs=avc1.42E01E",
+      "video/mp4",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm",
+    ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
+    if (!mimeType) {
+      setVideoStatus("error");
+      setVideoMessage("No browser video encoder was found.");
+      return;
+    }
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+    const canvas = document.createElement("canvas");
+    const scale = Math.max(1, Math.min(8, Math.floor(512 / Math.max(asset.width, asset.height))));
+    drawFrameToCanvas(canvas, asset.frames[0]?.id, scale);
+    const stream = canvas.captureStream(Math.max(1, Math.min(60, fps)));
+    const chunks: BlobPart[] = [];
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recorder.ondataavailable = (event) => {
+      if (event.data.size) chunks.push(event.data);
+    };
+    const stopped = new Promise<void>((resolve, reject) => {
+      recorder.onstop = () => resolve();
+      recorder.onerror = () => reject(new Error("Video encoding failed"));
+    });
+    try {
+      recorder.start();
+      for (const frame of asset.frames) {
+        drawFrameToCanvas(canvas, frame.id, scale);
+        await new Promise((resolve) => window.setTimeout(resolve, Math.max(40, frame.durationMs)));
+      }
+      recorder.stop();
+      await stopped;
+      stream.getTracks().forEach((track) => track.stop());
+      downloadBlob(new Blob(chunks, { type: mimeType }), `${asset.name}-animation.${extension}`);
+      setVideoStatus("ready");
+      setVideoMessage(extension === "mp4" ? "MP4 downloaded." : "MP4 is not supported here, downloaded WebM instead.");
+    } catch (error) {
+      stream.getTracks().forEach((track) => track.stop());
+      setVideoStatus("error");
+      setVideoMessage(error instanceof Error ? error.message : "Video export failed");
+    }
   };
 
   const activeFrame = asset.frames.find((frame) => frame.id === activeFrameId) ?? asset.frames[frameIndex] ?? asset.frames[0];
@@ -115,6 +183,9 @@ export const AnimationWorkspace = () => {
         <button onClick={exportSpritesheet}>
           <Download size={16} /> Spritesheet
         </button>
+        <button onClick={() => void exportVideo()} disabled={videoStatus === "exporting"}>
+          <Download size={16} /> {videoStatus === "exporting" ? "Rendering video" : "MP4 video"}
+        </button>
         <button onClick={() => downloadBlob(exportAnimationJson(asset), `${asset.name}-animation.json`)}>
           <FileJson size={16} /> Animation JSON
         </button>
@@ -122,6 +193,7 @@ export const AnimationWorkspace = () => {
           <ExternalLink size={16} /> Open clone tab
         </button>
         <p className="hint">Draw each frame in the normal Draw workspace, then return here for timing, preview, spritesheets, and engine JSON.</p>
+        {videoMessage ? <p className={videoStatus === "error" ? "hint status-error-text" : "hint"}>{videoMessage}</p> : null}
       </aside>
       <aside className="panel frame-source-panel">
         <h2><ImagePlus size={16} /> Add Project Art As Frames</h2>

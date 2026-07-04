@@ -1166,6 +1166,10 @@ button.active,
   background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
 }
 
+.status-error-text {
+  color: var(--app-danger);
+}
+
 .hero-kicker {
   color: var(--app-accent);
 }
