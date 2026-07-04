@@ -38,6 +38,7 @@ import { renderAsset } from "./canvas/renderers";
 import { downloadBlob, exportAssetPng } from "../projects/importExport/zip";
 import { importPixelFiles } from "../projects/importExport/importers";
 import { palettePresets, palettePresetById } from "../palettes/presets";
+import type { TemplateKind } from "../projects/factory";
 import type { ToolId } from "../projects/types";
 
 const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
@@ -61,6 +62,8 @@ const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
 
 const rangeStyle = (value: number, min: number, max: number) =>
   ({ "--range-progress": `${Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))}%` }) as CSSProperties;
+
+const playfulTemplates: TemplateKind[] = ["grass", "flower", "water", "path", "tree", "bush", "rock", "coin", "hero"];
 
 export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -305,6 +308,9 @@ export const EditorWorkspace = () => {
             <button onClick={() => useAppStore.getState().addTemplateAsset("path")}>Path</button>
             <button onClick={() => useAppStore.getState().addTemplateAsset("coin")}>Coin</button>
             <button onClick={() => useAppStore.getState().addTemplateAsset("hero")}>Tiny Hero</button>
+            <button className="template-random" onClick={() => useAppStore.getState().addTemplateAsset(playfulTemplates[Math.floor(Math.random() * playfulTemplates.length)])}>
+              Surprise
+            </button>
           </div>
         </section>
         <section className="panel">

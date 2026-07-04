@@ -44,7 +44,7 @@ const manualSections = [
   {
     icon: Download,
     title: "Export",
-    body: "Export a project as .pixelzip for backup or sharing. Export active PNGs for single sprites, tilesheet PNGs for tile sets, and spritesheets for animations.",
+    body: "PNG is the default export for finished art. Use .pixelzip only as a full editable project backup, plus tilesheet PNGs for tile sets and spritesheets for animations.",
   },
 ];
 

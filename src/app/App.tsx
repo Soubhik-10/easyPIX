@@ -9,7 +9,7 @@ import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
 import { PalettesWorkspace } from "../palettes/PalettesWorkspace";
-import { downloadBlob, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
+import { downloadBlob, exportAssetFramePng, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
   const project = useAppStore((state) => state.project);
@@ -22,6 +22,8 @@ export const App = () => {
   const saveError = useAppStore((state) => state.saveError);
   const canUndo = useAppStore((state) => state.history.length > 0);
   const canRedo = useAppStore((state) => state.future.length > 0);
+  const activeAssetId = useAppStore((state) => state.activeAssetId);
+  const activeFrameId = useAppStore((state) => state.activeFrameId);
   const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
@@ -188,7 +190,24 @@ export const App = () => {
     useAppStore.setState({ project: null });
   };
 
-  const exportZip = async () => {
+  const activeAsset = project.assets.find((entry) => entry.id === activeAssetId) ?? project.assets[0];
+  const activeFrame = activeAsset?.frames.find((entry) => entry.id === activeFrameId) ?? activeAsset?.frames[0];
+
+  const exportActivePng = async () => {
+    setExportStatus("exporting");
+    setExportError(null);
+    try {
+      await persist();
+      if (!activeAsset || !activeFrame) throw new Error("No active art to export.");
+      downloadBlob(exportAssetFramePng(activeAsset, activeFrame.id, 1), `${activeAsset.name}-${activeFrame.name}.png`);
+      setExportStatus("exported");
+    } catch (error) {
+      setExportStatus("error");
+      setExportError(error instanceof Error ? error.message : "PNG export failed");
+    }
+  };
+
+  const exportProjectBundle = async () => {
     setExportStatus("exporting");
     setExportError(null);
     try {
@@ -200,7 +219,7 @@ export const App = () => {
       setExportStatus("exported");
     } catch (error) {
       setExportStatus("error");
-      setExportError(error instanceof Error ? error.message : "Export failed");
+      setExportError(error instanceof Error ? error.message : "Project bundle export failed");
     }
   };
 
@@ -256,8 +275,11 @@ export const App = () => {
           <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"} title={saveError ?? "Local autosave status"}>
             {saveLabel}
           </span>
-          <button onClick={() => void exportZip()} disabled={exportStatus === "exporting"} title={exportError ?? "Export project bundle"}>
-            <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : "Export"}
+          <button onClick={() => void exportActivePng()} disabled={exportStatus === "exporting"} title={exportError ?? "Export active frame as PNG"}>
+            <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : "PNG"}
+          </button>
+          <button onClick={() => void exportProjectBundle()} disabled={exportStatus === "exporting"} title={exportError ?? "Backup full project as .pixelzip"}>
+            <Download size={16} /> Project backup
           </button>
           {exportStatus === "exported" && <span className="status-pill">Export ready</span>}
           {exportStatus === "error" && <span className="status-pill status-error" title={exportError ?? undefined}>Export failed</span>}

@@ -2122,6 +2122,15 @@ button.active,
   justify-content: flex-start;
 }
 
+.template-random {
+  grid-column: 1 / -1;
+  justify-content: center;
+  border-color: color-mix(in srgb, var(--app-accent) 54%, var(--app-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #38bdf8 18%, transparent), color-mix(in srgb, #facc15 16%, transparent)),
+    var(--app-surface);
+}
+
 .palette-preset-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
