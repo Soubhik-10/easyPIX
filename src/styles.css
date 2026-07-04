@@ -1223,24 +1223,43 @@ button.active,
 }
 
 .workspace-tabs {
+  justify-content: center;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface-2);
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .workspace-tabs button {
-  min-height: 30px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
   border-color: transparent;
   background: transparent;
   color: var(--app-muted);
+  overflow: visible;
 }
 
 .workspace-tabs button.active {
+  border-color: color-mix(in srgb, var(--app-accent) 42%, var(--app-border));
   color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent-soft) 65%, var(--app-surface));
   box-shadow: var(--app-shadow-soft);
+}
+
+.workspace-tabs button:hover,
+.workspace-tabs button:focus-visible {
+  border-color: var(--app-accent);
+  color: var(--app-text);
+  background: var(--app-surface);
 }
 
 .library {

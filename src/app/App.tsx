@@ -248,27 +248,27 @@ export const App = () => {
           <Sparkles size={18} />
           <span>easyPIX</span>
         </button>
-        <nav className="workspace-tabs">
-          <button className={workspace === "editor" ? "active" : ""} onClick={() => setWorkspace("editor")} title="Draw and edit pixels">
-            <Image size={16} /> Draw
+        <nav className="workspace-tabs" aria-label="Workspaces">
+          <button className={workspace === "editor" ? "active" : ""} onClick={() => setWorkspace("editor")} title="Draw and edit pixels" aria-label="Draw">
+            <Image size={16} />
           </button>
-          <button className={workspace === "import" ? "active" : ""} onClick={() => setWorkspace("import")} title="Import popular pixel art files">
-            <Upload size={16} /> Import
+          <button className={workspace === "import" ? "active" : ""} onClick={() => setWorkspace("import")} title="Import popular pixel art files" aria-label="Import">
+            <Upload size={16} />
           </button>
-          <button className={workspace === "palettes" ? "active" : ""} onClick={() => setWorkspace("palettes")} title="Palette presets and color management">
-            <Palette size={16} /> Palettes
+          <button className={workspace === "palettes" ? "active" : ""} onClick={() => setWorkspace("palettes")} title="Palette presets and color management" aria-label="Palettes">
+            <Palette size={16} />
           </button>
-          <button className={workspace === "animation" ? "active" : ""} onClick={() => setWorkspace("animation")} title="Animation timeline">
-            <Play size={16} /> Animate
+          <button className={workspace === "animation" ? "active" : ""} onClick={() => setWorkspace("animation")} title="Animation timeline" aria-label="Animate">
+            <Play size={16} />
           </button>
-          <button className={workspace === "tileset" ? "active" : ""} onClick={() => setWorkspace("tileset")} title="Tileset previews">
-            <Grid3X3 size={16} /> Tile Check
+          <button className={workspace === "tileset" ? "active" : ""} onClick={() => setWorkspace("tileset")} title="Tileset previews" aria-label="Tile Check">
+            <Grid3X3 size={16} />
           </button>
-          <button className={workspace === "sandbox" ? "active" : ""} onClick={() => setWorkspace("sandbox")} title="Sandbox scene">
-            <LayoutGrid size={16} /> Sandbox
+          <button className={workspace === "sandbox" ? "active" : ""} onClick={() => setWorkspace("sandbox")} title="Sandbox scene" aria-label="Sandbox">
+            <LayoutGrid size={16} />
           </button>
-          <button className={workspace === "help" ? "active" : ""} onClick={() => setWorkspace("help")} title="Manual and beginner help">
-            <BookOpen size={16} /> Manual
+          <button className={workspace === "help" ? "active" : ""} onClick={() => setWorkspace("help")} title="Manual and beginner help" aria-label="Manual">
+            <BookOpen size={16} />
           </button>
         </nav>
         <div className="topbar-actions">
