@@ -4,7 +4,7 @@ const manualSections = [
   {
     icon: Paintbrush,
     title: "Draw",
-    body: "Use Pencil, Eraser, Fill, Picker, shape tools, spray, dither, lighten, darken, shadow helper, Magic Wand, and Lasso. Pixel Perfect and Stabilizer help clean shaky mouse strokes.",
+    body: "Use Pencil, Eraser, Fill, Picker, shape tools, spray, dither, lighten, darken, shadow helper, Magic Wand, Lasso, and Move. Select artwork grabs the visible drawing so you can nudge it into place.",
   },
   {
     icon: Layers,
@@ -83,6 +83,8 @@ export const HelpWorkspace = () => (
         <span>B/E/G/I</span><p>Pencil, Eraser, Fill, Picker</p>
         <span>A/R/L/D</span><p>Spray, Replace, Lighten, Darken</p>
         <span>W/V</span><p>Magic Wand, Lasso</p>
+        <span>O</span><p>Move selected pixels</p>
+        <span>Arrows</span><p>Nudge selection, Shift for 8px</p>
         <span>[ ]</span><p>Brush size down/up</p>
       </div>
     </section>

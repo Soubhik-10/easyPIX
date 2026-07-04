@@ -109,8 +109,10 @@ type AppState = {
   cut: () => void;
   paste: () => void;
   selectAll: () => void;
+  selectVisiblePixels: () => void;
   deselect: () => void;
   deleteSelection: () => void;
+  moveSelection: (dx: number, dy: number) => void;
   clearActiveLayer: () => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
@@ -169,7 +171,7 @@ const updateActiveAsset = (project: PixelProject, assetId: string | null, recipe
 const activeAsset = (state: AppState) => state.project?.assets.find((asset) => asset.id === state.activeAssetId) ?? null;
 const activeLayer = (state: AppState) => activeAsset(state)?.layers.find((layer) => layer.id === state.activeLayerId) ?? null;
 const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"];
-const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse"];
+const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse", "move"];
 
 const pixelsForLayer = (asset: PixelAsset, frameId: string | null, layer: PixelLayer) => {
   const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
@@ -367,6 +369,24 @@ const compositeAssetPixels = (asset: PixelAsset, frameId?: string | null) => {
   return pixels;
 };
 
+const visiblePixelBounds = (pixels: string[], width: number, height: number): Selection => {
+  let left = width;
+  let right = -1;
+  let top = height;
+  let bottom = -1;
+  pixels.forEach((color, index) => {
+    if (!color || color === "transparent") return;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  });
+  if (right < left || bottom < top) return null;
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+};
+
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   project: null,
@@ -558,6 +578,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (state.tool === "lasso") {
       const points = [...state.lassoPoints, { x, y }];
       set({ selection: lassoBounds(points), lassoPoints: [], strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+      return;
+    }
+    if (state.tool === "move") {
+      if (state.selection) get().moveSelection(x - start.x, y - start.y);
+      set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
       return;
     }
     const drawTools = ["line", "rect", "ellipse"];
@@ -861,6 +886,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const asset = activeAsset(get());
     if (asset) set({ selection: { x: 0, y: 0, width: asset.width, height: asset.height } });
   },
+  selectVisiblePixels: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer) return;
+    set({ selection: visiblePixelBounds(pixelsForLayer(asset, state.activeFrameId, layer), asset.width, asset.height) });
+  },
   deselect: () => set({ selection: null }),
   deleteSelection: () => {
     const state = get();
@@ -870,6 +902,35 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
       ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, clearSelectionPixels(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, state.selection!)),
     }))));
+  },
+  moveSelection: (dx, dy) => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    const selection = state.selection;
+    if (!asset || !layer || layer.locked || !selection || (!dx && !dy)) return;
+    const targetX = Math.max(0, Math.min(asset.width - selection.width, selection.x + dx));
+    const targetY = Math.max(0, Math.min(asset.height - selection.height, selection.y + dy));
+    if (targetX === selection.x && targetY === selection.y) return;
+    const nextSelection = { ...selection, x: targetX, y: targetY };
+    set({
+      ...withProject(state, (project) =>
+        updateActiveAsset(project, state.activeAssetId, (entry) => {
+          const currentPixels = pixelsForLayer(entry, state.activeFrameId, layer);
+          const clip = copySelection({ ...layer, pixels: currentPixels }, entry.width, selection);
+          const cleared = clearSelectionPixels(currentPixels, entry.width, selection);
+          return {
+            ...setFrameLayerPixels(
+              entry,
+              state.activeFrameId,
+              layer.id,
+              pastePixels({ ...layer, pixels: cleared }, entry.width, entry.height, targetX, targetY, clip),
+            ),
+          };
+        }),
+      state.strokeHistoryBase),
+      selection: nextSelection,
+    });
   },
   clearActiveLayer: () => {
     const state = get();

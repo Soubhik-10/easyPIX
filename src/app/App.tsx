@@ -92,6 +92,14 @@ export const App = () => {
         event.preventDefault();
         store.setZoom(Math.max(4, store.zoom - 4));
       }
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key) && store.selection) {
+        event.preventDefault();
+        const amount = event.shiftKey ? 8 : 1;
+        const dx = event.key === "ArrowLeft" ? -amount : event.key === "ArrowRight" ? amount : 0;
+        const dy = event.key === "ArrowUp" ? -amount : event.key === "ArrowDown" ? amount : 0;
+        store.moveSelection(dx, dy);
+        return;
+      }
       if (event.key === "Escape") store.deselect();
       if (event.key === "Delete" || event.key === "Backspace") store.deleteSelection();
       if (key === "b") store.setTool("pencil");
@@ -104,6 +112,7 @@ export const App = () => {
       if (key === "d") store.setTool("darken");
       if (key === "w") store.setTool("magic");
       if (key === "v") store.setTool("lasso");
+      if (key === "o") store.setTool("move");
       if (key === "m") store.toggleMirrorX();
       if (event.key === "[") store.setBrushSize(Math.max(1, store.brushSize - 1));
       if (event.key === "]") store.setBrushSize(Math.min(12, store.brushSize + 1));

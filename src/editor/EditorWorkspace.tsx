@@ -1,6 +1,8 @@
 import { ChangeEvent, PointerEvent, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   Brush,
   Circle,
@@ -17,6 +19,7 @@ import {
   Layers,
   Lock,
   Maximize,
+  Move,
   MousePointer2,
   PaintBucket,
   Palette as PaletteIcon,
@@ -51,6 +54,7 @@ const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
   { id: "rect", label: "Rectangle", icon: Square },
   { id: "ellipse", label: "Ellipse", icon: Circle },
   { id: "select", label: "Selection", icon: MousePointer2 },
+  { id: "move", label: "Move", icon: Move },
   { id: "magic", label: "Magic wand", icon: WandSparkles },
   { id: "lasso", label: "Lasso", icon: MousePointer2 },
 ];
@@ -210,8 +214,21 @@ export const EditorWorkspace = () => {
             Paste
           </button>
           <button onClick={() => useAppStore.getState().selectAll()}>Select all</button>
+          <button onClick={() => useAppStore.getState().selectVisiblePixels()}>Select artwork</button>
           <button onClick={() => useAppStore.getState().deselect()}>Deselect</button>
           <button onClick={() => useAppStore.getState().deleteSelection()} disabled={!selection}>Delete selection</button>
+          <button onClick={() => useAppStore.getState().moveSelection(-1, 0)} disabled={!selection} title="Move selection left">
+            <ArrowLeft size={16} />
+          </button>
+          <button onClick={() => useAppStore.getState().moveSelection(1, 0)} disabled={!selection} title="Move selection right">
+            <ArrowRight size={16} />
+          </button>
+          <button onClick={() => useAppStore.getState().moveSelection(0, -1)} disabled={!selection} title="Move selection up">
+            <ArrowUp size={16} />
+          </button>
+          <button onClick={() => useAppStore.getState().moveSelection(0, 1)} disabled={!selection} title="Move selection down">
+            <ArrowDown size={16} />
+          </button>
           <button onClick={() => useAppStore.getState().clearActiveLayer()} title="Clear active layer on this frame">
             <Trash2 size={16} /> Clear canvas
           </button>
@@ -376,6 +393,8 @@ export const EditorWorkspace = () => {
             <span>D</span><p>Darken</p>
             <span>W</span><p>Magic wand</p>
             <span>V</span><p>Lasso</p>
+            <span>O</span><p>Move</p>
+            <span>Arrows</span><p>Nudge selection</p>
             <span>M</span><p>Mirror X</p>
             <span>[ ]</span><p>Brush size</p>
           </div>
