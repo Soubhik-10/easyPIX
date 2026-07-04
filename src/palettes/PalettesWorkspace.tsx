@@ -91,6 +91,10 @@ export const PalettesWorkspace = () => {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search palettes" aria-label="Search palettes" />
             <span className="status-pill">{presets.length} shown</span>
           </div>
+          <a className="palette-more-link" href="https://lospec.com/palette-list" target="_blank" rel="noreferrer">
+            <ExternalLink size={16} />
+            Browse more palettes on Lospec
+          </a>
           <div className="palette-card-grid">
             {presets.map((preset) => (
               <article className="panel palette-card" key={preset.id}>

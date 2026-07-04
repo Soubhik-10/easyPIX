@@ -2208,7 +2208,7 @@ button.active,
 
 .palette-browser {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 10px;
   min-width: 0;
 }
@@ -2229,6 +2229,27 @@ button.active,
 .palette-filter-row button {
   min-height: 30px;
   padding: 0 9px;
+}
+
+.palette-more-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.palette-more-link:hover {
+  border-color: var(--app-accent);
+  background: var(--app-surface-2);
 }
 
 .palette-card-grid {
