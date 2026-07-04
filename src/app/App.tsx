@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
+import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
 import { useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
 import { EditorWorkspace } from "../editor/EditorWorkspace";
@@ -8,6 +8,7 @@ import { TilesetWorkspace } from "../tilesets/TilesetWorkspace";
 import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
+import { PalettesWorkspace } from "../palettes/PalettesWorkspace";
 import { downloadBlob, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
@@ -138,6 +139,9 @@ export const App = () => {
           <button className={workspace === "import" ? "active" : ""} onClick={() => setWorkspace("import")} title="Import popular pixel art files">
             <Upload size={16} /> Import
           </button>
+          <button className={workspace === "palettes" ? "active" : ""} onClick={() => setWorkspace("palettes")} title="Palette presets and color management">
+            <Palette size={16} /> Palettes
+          </button>
           <button className={workspace === "animation" ? "active" : ""} onClick={() => setWorkspace("animation")} title="Animation timeline">
             <Play size={16} /> Animate
           </button>
@@ -182,6 +186,7 @@ export const App = () => {
       </header>
       {workspace === "editor" && <EditorWorkspace />}
       {workspace === "import" && <ImportWorkspace />}
+      {workspace === "palettes" && <PalettesWorkspace />}
       {workspace === "animation" && <AnimationWorkspace />}
       {workspace === "tileset" && <TilesetWorkspace />}
       {workspace === "sandbox" && <SandboxWorkspace />}

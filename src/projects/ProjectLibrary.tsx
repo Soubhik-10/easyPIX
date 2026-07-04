@@ -12,6 +12,7 @@ const quickStarts: Array<{
 }> = [
   { workspace: "editor", title: "Draw", description: "Create sprites with layers, brushes, selection, and palettes.", icon: Image },
   { workspace: "import", title: "Import", description: "Bring in PNG, Piskel, or Aseprite JSON plus spritesheet PNG.", icon: Upload },
+  { workspace: "palettes", title: "Palettes", description: "Browse credited presets, import palettes, export JSON, and manage colors.", icon: Palette },
   { workspace: "tileset", title: "Tile Check", description: "Preview repeated tiles, neighbors, sheets, and seams.", icon: Grid3X3 },
   { workspace: "animation", title: "Animate", description: "Build frame timelines, preview playback, export spritesheets.", icon: Play },
   { workspace: "sandbox", title: "Sandbox", description: "Paint a small scene to see how assets work together.", icon: LayoutGrid },

@@ -78,7 +78,7 @@ export type ToolId =
   | "select"
   | "shadow";
 
-export type Workspace = "editor" | "import" | "animation" | "tileset" | "sandbox" | "help";
+export type Workspace = "editor" | "import" | "palettes" | "animation" | "tileset" | "sandbox" | "help";
 
 export type ThemePreference = "system" | "light" | "dark";
 

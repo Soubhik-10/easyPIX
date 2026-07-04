@@ -317,7 +317,7 @@ canvas {
 
 .front-nav {
   display: grid;
-  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -2100,6 +2100,195 @@ button.active,
   background-size: 22px 22px;
 }
 
+.palettes-layout {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  padding: 18px;
+  overflow: auto;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--app-surface) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--app-surface) 16%, transparent) 1px, transparent 1px),
+    var(--app-surface-3);
+  background-size: 22px 22px;
+}
+
+.palette-page-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.82fr);
+  gap: 18px;
+  align-items: end;
+  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #38bdf8 18%, transparent), transparent 34%),
+    linear-gradient(45deg, color-mix(in srgb, #f97316 16%, transparent), transparent 34%),
+    var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.palette-page-hero h1 {
+  max-width: 780px;
+  margin: 0;
+  font-size: clamp(30px, 4.6vw, 58px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.palette-page-hero p {
+  margin: 0;
+  color: var(--app-muted);
+  line-height: 1.45;
+}
+
+.palette-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  gap: 14px;
+  min-height: 0;
+}
+
+.palette-active-panel {
+  align-self: start;
+  position: sticky;
+  top: 0;
+}
+
+.large-swatches,
+.palette-card-swatches {
+  display: grid;
+  gap: 4px;
+}
+
+.large-swatches {
+  grid-template-columns: repeat(8, 1fr);
+  margin-bottom: 12px;
+}
+
+.large-swatch {
+  min-height: 28px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.palette-stat-grid {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.palette-stat-grid span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--app-text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.palette-stat-grid p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+.palette-browser {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.palette-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.palette-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.palette-card {
+  display: grid;
+  gap: 10px;
+}
+
+.palette-card-heading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.palette-card-heading h2 {
+  margin-bottom: 4px;
+}
+
+.palette-card-heading p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.palette-card-heading span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 28px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-muted);
+  background: var(--app-surface-2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.palette-card-swatches {
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.palette-card-swatches i {
+  display: block;
+  aspect-ratio: 1;
+  min-height: 18px;
+  border: 1px solid color-mix(in srgb, var(--app-border-strong) 55%, transparent);
+  border-radius: 4px;
+}
+
+.palette-card-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.palette-card-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid var(--app-border);
+  border-radius: 7px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.palette-card-actions a:hover {
+  border-color: var(--app-accent);
+  background: var(--app-surface-2);
+}
+
 .manual-hero {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.8fr);
@@ -2152,9 +2341,19 @@ button.active,
 
 @media (max-width: 920px) {
   .editor-layout.detailed-tools,
+  .palette-page-hero,
+  .palette-workbench,
   .manual-hero,
   .manual-grid {
     grid-template-columns: 1fr;
+  }
+
+  .palette-active-panel {
+    position: static;
+  }
+
+  .palette-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .tool-rail[data-label-mode="detailed"] {
