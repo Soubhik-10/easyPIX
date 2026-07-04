@@ -1517,10 +1517,12 @@ button.active,
 }
 
 .easypix-home {
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
+  height: 100vh;
   min-height: 100vh;
   padding: 14px;
-  overflow: visible;
+  overflow: hidden;
   background:
     linear-gradient(135deg, rgba(56, 189, 248, 0.18), transparent 30%),
     linear-gradient(45deg, rgba(251, 113, 133, 0.18), transparent 32%),
@@ -2142,10 +2144,12 @@ button.active,
 
 .launcher-main {
   display: grid;
-  grid-template-columns: minmax(440px, 1fr) minmax(320px, 420px);
-  gap: 18px;
+  grid-template-columns: minmax(320px, 0.76fr) minmax(340px, 1.24fr);
+  gap: 14px;
   align-items: start;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .start-panel,
@@ -2219,7 +2223,9 @@ button.active,
 .recent-panel {
   display: grid;
   grid-template-rows: auto 1fr;
-  padding: 14px;
+  width: 100%;
+  height: clamp(220px, 34vh, 420px);
+  padding: 12px;
   overflow: hidden;
 }
 
@@ -2228,6 +2234,7 @@ button.active,
   align-items: center;
   justify-content: space-between;
   padding-bottom: 10px;
+  min-width: 0;
 }
 
 .panel-heading h2 {
@@ -2249,8 +2256,10 @@ button.active,
 
 .recent-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
+  min-height: 0;
+  padding-right: 2px;
   overflow: auto;
 }
 
@@ -2266,8 +2275,8 @@ button.active,
   align-content: center;
   justify-content: stretch;
   min-width: 0;
-  min-height: 62px;
-  padding: 10px 12px;
+  min-height: 52px;
+  padding: 8px 10px;
   text-align: left;
 }
 
@@ -2291,6 +2300,11 @@ button.active,
 }
 
 @media (max-width: 920px) {
+  .easypix-home {
+    height: auto;
+    overflow: auto;
+  }
+
   .launcher {
     padding: 16px;
   }
@@ -2299,6 +2313,16 @@ button.active,
   .launcher-main,
   .project-name-row {
     grid-template-columns: 1fr;
+  }
+
+  .launcher-main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .recent-panel {
+    height: auto;
+    max-height: 360px;
   }
 }
 
