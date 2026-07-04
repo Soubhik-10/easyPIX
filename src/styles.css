@@ -2144,6 +2144,7 @@ button.active,
   display: grid;
   grid-template-columns: minmax(440px, 1fr) minmax(320px, 420px);
   gap: 18px;
+  align-items: start;
   min-height: 0;
 }
 
@@ -2158,15 +2159,21 @@ button.active,
 
 .start-panel {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 14px;
-  padding: 16px;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  padding: 12px;
 }
 
 .project-name-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto auto;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
+}
+
+.project-name-row input,
+.project-name-row button {
+  min-height: 34px;
 }
 
 .quick-start-list {

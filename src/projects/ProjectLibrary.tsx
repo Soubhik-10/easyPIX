@@ -190,24 +190,9 @@ export const ProjectLibrary = () => {
               <Plus size={17} /> New
             </button>
             <button onClick={() => inputRef.current?.click()}>
-              <Import size={17} /> Import project
+              <Import size={17} /> Import
             </button>
             <input ref={inputRef} type="file" accept=".pixelzip,.zip" onChange={onImport} hidden />
-          </div>
-
-          <div className="quick-start-list">
-            {quickStarts.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button key={item.workspace} onClick={() => void start(item.workspace)}>
-                  <Icon size={20} />
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                </button>
-              );
-            })}
           </div>
         </section>
 
