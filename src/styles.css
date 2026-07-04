@@ -1976,6 +1976,55 @@ button.active,
   justify-content: flex-start;
 }
 
+.palette-preset-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.palette-credit {
+  margin-bottom: 10px;
+}
+
+.palette-mini-tools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.palette-mini-tools label {
+  display: grid;
+  gap: 5px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.palette-mini-tools input[type="color"] {
+  width: 100%;
+  min-height: 34px;
+  padding: 3px;
+}
+
+.palette-mini-tools button {
+  grid-column: 1 / -1;
+}
+
+.ramp-preview {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.ramp-preview i {
+  display: block;
+  min-height: 16px;
+  border: 1px solid color-mix(in srgb, var(--app-border-strong) 55%, transparent);
+  border-radius: 4px;
+}
+
 .scene-brush-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

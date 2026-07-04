@@ -10,6 +10,7 @@ import {
   Eraser,
   Eye,
   EyeOff,
+  FileJson,
   FlipHorizontal,
   FlipVertical,
   Grid2X2,
@@ -33,6 +34,7 @@ import { useAppStore, paletteWarnings } from "../app/store";
 import { renderAsset } from "./canvas/renderers";
 import { downloadBlob, exportAssetPng } from "../projects/importExport/zip";
 import { importPixelFiles } from "../projects/importExport/importers";
+import { palettePresets, palettePresetById } from "../palettes/presets";
 import type { ToolId } from "../projects/types";
 
 const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
@@ -76,9 +78,15 @@ export const EditorWorkspace = () => {
   const [assetHeight, setAssetHeight] = useState(64);
   const [exportScale, setExportScale] = useState(1);
   const [paletteText, setPaletteText] = useState("");
+  const [palettePresetId, setPalettePresetId] = useState(palettePresets[0]?.id ?? "");
+  const [rampColor, setRampColor] = useState(color);
+  const [swapFrom, setSwapFrom] = useState(color);
+  const [swapTo, setSwapTo] = useState(customColor);
+  const [paletteExportText, setPaletteExportText] = useState("");
   const asset = project.assets.find((entry) => entry.id === activeAssetId) ?? project.assets[0];
   const palette = project.palettes.find((entry) => entry.id === asset.paletteId) ?? project.palettes[0];
   const activeLayer = asset.layers.find((layer) => layer.id === activeLayerId) ?? asset.layers[0];
+  const selectedPreset = palettePresetById(palettePresetId) ?? palettePresets[0];
   const warnings = useMemo(() => (palette ? paletteWarnings(palette) : []), [palette]);
 
   useEffect(() => {
@@ -261,6 +269,22 @@ export const EditorWorkspace = () => {
         </section>
         <section className="panel">
           <h2><PaletteIcon size={16} /> Palette</h2>
+          <div className="palette-preset-row">
+            <select value={palettePresetId} onChange={(event) => setPalettePresetId(event.target.value)} aria-label="Palette preset">
+              {palettePresets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => useAppStore.getState().applyPalettePreset(palettePresetId, "replace")}>Use</button>
+            <button onClick={() => useAppStore.getState().applyPalettePreset(palettePresetId, "append")}>Append</button>
+          </div>
+          {selectedPreset ? (
+            <p className="hint palette-credit">
+              {selectedPreset.credit}. {selectedPreset.note}
+            </p>
+          ) : null}
           <div className="swatches">
             {palette.colors.map((entry) => (
               <button key={entry} className={entry === color ? "active swatch" : "swatch"} style={{ background: entry }} onClick={() => useAppStore.getState().setColor(entry)} title={entry} />
@@ -273,10 +297,45 @@ export const EditorWorkspace = () => {
           </div>
           <div className="button-row">
             <button onClick={() => useAppStore.getState().addPaletteShades(color)}>Shades</button>
+            <button onClick={() => { useAppStore.getState().addPaletteRamp(rampColor); useAppStore.getState().setColor(rampColor); }}>Ramp</button>
             <button onClick={() => useAppStore.getState().sortPalette()}>Sort</button>
           </div>
-          <textarea value={paletteText} onChange={(event) => setPaletteText(event.target.value)} placeholder="#112233 #445566 or GPL text" />
-          <button onClick={() => { useAppStore.getState().importPaletteText(paletteText); setPaletteText(""); }}>Import palette text</button>
+          <div className="palette-mini-tools">
+            <label>
+              Ramp base
+              <input type="color" value={rampColor} onChange={(event) => setRampColor(event.target.value)} />
+            </label>
+            <label>
+              From
+              <input type="color" value={swapFrom} onChange={(event) => setSwapFrom(event.target.value)} />
+            </label>
+            <label>
+              To
+              <input type="color" value={swapTo} onChange={(event) => setSwapTo(event.target.value)} />
+            </label>
+            <button onClick={() => useAppStore.getState().remapColor(swapFrom, swapTo)}>Remap art</button>
+          </div>
+          <div className="ramp-preview" aria-label="Generated ramp preview">
+            {[...palette.colors].slice(-8).map((entry) => (
+              <i key={entry} style={{ background: entry }} />
+            ))}
+          </div>
+          <textarea value={paletteText} onChange={(event) => setPaletteText(event.target.value)} placeholder='Paste easyPIX palette JSON, Lospec/GPL text, or hex colors like #112233 #445566' />
+          <div className="button-row">
+            <button onClick={() => { useAppStore.getState().importPaletteJson(paletteText); setPaletteText(""); }}>
+              <Upload size={15} /> Import palette
+            </button>
+            <button
+              onClick={() => {
+                const json = useAppStore.getState().exportPaletteJson();
+                setPaletteExportText(json);
+                downloadBlob(new Blob([json], { type: "application/json" }), `${palette.name || "palette"}.palette.json`);
+              }}
+            >
+              <FileJson size={15} /> Export JSON
+            </button>
+          </div>
+          {paletteExportText ? <textarea readOnly value={paletteExportText} aria-label="Exported palette JSON" /> : null}
           {warnings.map((warning) => (
             <p className="hint" key={warning}>{warning}</p>
           ))}

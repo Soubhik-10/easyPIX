@@ -1,4 +1,4 @@
-import { BookOpen, Download, Grid3X3, Image, Layers, Paintbrush, Play, Upload } from "lucide-react";
+import { BookOpen, Download, Grid3X3, Image, Layers, Palette, Paintbrush, Play, Upload } from "lucide-react";
 
 const manualSections = [
   {
@@ -15,6 +15,11 @@ const manualSections = [
     icon: Image,
     title: "Templates",
     body: "Starter templates create editable 16x16 tiles and sprites. Add one, repaint the colors, copy chunks, then use Tile Check to see if the result repeats cleanly.",
+  },
+  {
+    icon: Palette,
+    title: "Palettes",
+    body: "Use credited presets like PICO-8, DawnBringer 32, Endesga 32, or a small handheld-style set. Import/export palette JSON, build ramps from one base color, and remap art colors when a sprite needs a new mood.",
   },
   {
     icon: Upload,

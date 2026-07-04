@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
 import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
+import { palettePresetById } from "../palettes/presets";
 import {
   adjustColor,
   clearSelectionPixels,
@@ -107,8 +108,13 @@ type AppState = {
   addPaletteColor: (color: string) => void;
   removePaletteColor: (color: string) => void;
   addPaletteShades: (color: string) => void;
+  addPaletteRamp: (color: string) => void;
   sortPalette: () => void;
+  applyPalettePreset: (presetId: string, mode: "replace" | "append") => void;
+  exportPaletteJson: () => string;
+  importPaletteJson: (text: string) => void;
   importPaletteText: (text: string) => void;
+  remapColor: (from: string, to: string) => void;
   addFrame: () => void;
   duplicateFrame: () => void;
   removeFrame: (id: string) => void;
@@ -220,6 +226,60 @@ const shadeColor = (hex: string) => {
   const g = Math.max(0, ((value >> 8) & 255) - 42);
   const b = Math.max(0, (value & 255) - 42);
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+};
+
+const normalizeHex = (color: string) => color.trim().toLowerCase();
+
+const validHex = (color: string) => /^#[0-9a-f]{6}$/i.test(color);
+
+const uniqueColors = (colors: string[]) => [...new Set(colors.map(normalizeHex).filter(validHex))];
+
+const hexChannels = (hex: string) => {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+};
+
+const luminance = (hex: string) => {
+  const { r, g, b } = hexChannels(hex);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+};
+
+const channelDistance = (a: string, b: string) => {
+  const left = hexChannels(a);
+  const right = hexChannels(b);
+  return Math.sqrt((left.r - right.r) ** 2 + (left.g - right.g) ** 2 + (left.b - right.b) ** 2);
+};
+
+const buildPaletteRamp = (color: string) =>
+  uniqueColors([adjustColor(color, -64), adjustColor(color, -36), adjustColor(color, -16), color, adjustColor(color, 20), adjustColor(color, 44), adjustColor(color, 68)]);
+
+const extractPalettePayload = (text: string) => {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    const value =
+      Array.isArray(parsed)
+        ? { name: "Imported Palette", colors: parsed }
+        : parsed && typeof parsed === "object" && "palette" in parsed
+          ? (parsed as { palette?: unknown }).palette
+          : parsed;
+    if (value && typeof value === "object" && "colors" in value && Array.isArray((value as { colors: unknown[] }).colors)) {
+      const candidate = value as { name?: unknown; colors: unknown[] };
+      return {
+        name: typeof candidate.name === "string" ? candidate.name : "Imported Palette",
+        colors: uniqueColors(candidate.colors.filter((entry): entry is string => typeof entry === "string")),
+      };
+    }
+  } catch {
+    // Plain text and GPL palette files fall through to the hex extractor.
+  }
+  return {
+    name: "Imported Palette",
+    colors: uniqueColors([...text.matchAll(/#[0-9a-fA-F]{6}\b/g)].map((match) => match[0])),
+  };
 };
 
 const paintAt = (pixels: string[], width: number, height: number, x: number, y: number, state: AppState) => {
@@ -680,12 +740,75 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: palette.colors.filter((entry) => entry !== color) } : palette)) }))),
   addPaletteShades: (color) =>
     set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: [...new Set([...palette.colors, adjustColor(color, -48), adjustColor(color, -24), color, adjustColor(color, 24), adjustColor(color, 48)])] } : palette)) }))),
+  addPaletteRamp: (color) =>
+    set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: uniqueColors([...palette.colors, ...buildPaletteRamp(color)]) } : palette)) }))),
   sortPalette: () =>
-    set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: [...palette.colors].sort() } : palette)) }))),
+    set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: [...palette.colors].sort((a, b) => luminance(a) - luminance(b)) } : palette)) }))),
+  applyPalettePreset: (presetId, mode) => {
+    const preset = palettePresetById(presetId);
+    if (!preset) return;
+    set(
+      withProject(get(), (project) => ({
+        ...project,
+        palettes: project.palettes.map((palette, index) =>
+          index === 0
+            ? {
+                ...palette,
+                name: mode === "replace" ? preset.name : palette.name,
+                colors: mode === "replace" ? uniqueColors(preset.colors) : uniqueColors([...palette.colors, ...preset.colors]),
+              }
+            : palette,
+        ),
+      })),
+    );
+  },
+  exportPaletteJson: () => {
+    const palette = get().project?.palettes[0];
+    if (!palette) return "";
+    return JSON.stringify({ type: "easyPIX-palette", version: 1, palette }, null, 2);
+  },
+  importPaletteJson: (text) => {
+    const imported = extractPalettePayload(text);
+    if (!imported.colors.length) return;
+    set(
+      withProject(get(), (project) => ({
+        ...project,
+        palettes: project.palettes.map((palette, index) =>
+          index === 0
+            ? {
+                ...palette,
+                name: imported.name || palette.name,
+                colors: uniqueColors([...palette.colors, ...imported.colors]),
+              }
+            : palette,
+        ),
+      })),
+    );
+  },
   importPaletteText: (text) => {
-    const colors = [...text.matchAll(/#[0-9a-fA-F]{6}\b/g)].map((match) => match[0].toLowerCase());
+    const colors = extractPalettePayload(text).colors;
     if (!colors.length) return;
-    set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: [...new Set([...palette.colors, ...colors])] } : palette)) })));
+    set(withProject(get(), (project) => ({ ...project, palettes: project.palettes.map((palette, index) => (index === 0 ? { ...palette, colors: uniqueColors([...palette.colors, ...colors]) } : palette)) })));
+  },
+  remapColor: (from, to) => {
+    const source = normalizeHex(from);
+    const target = normalizeHex(to);
+    if (!validHex(source) || !validHex(target) || source === target) return;
+    set(
+      withProject(get(), (project) => ({
+        ...project,
+        palettes: project.palettes.map((palette, index) =>
+          index === 0 ? { ...palette, colors: uniqueColors(palette.colors.map((entry) => (normalizeHex(entry) === source ? target : entry))) } : palette,
+        ),
+        assets: project.assets.map((asset) => ({
+          ...asset,
+          layers: asset.layers.map((layer) => ({
+            ...layer,
+            pixels: layer.pixels.map((pixel) => (normalizeHex(pixel) === source ? target : pixel)),
+          })),
+        })),
+      })),
+    );
   },
   addFrame: () =>
     set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => ({ ...asset, frames: [...asset.frames, { id: uid("frame"), name: `Frame ${asset.frames.length + 1}`, durationMs: 160, layerIds: asset.layers.map((layer) => layer.id) }] })))),
@@ -781,7 +904,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 export const paletteWarnings = (palette: Palette) => {
   const warnings: string[] = [];
-  if (palette.colors.length > 32) warnings.push("Large palettes can be harder to keep consistent.");
-  if (palette.colors.length < 4) warnings.push("Add a few midtones and highlights for cleaner sprites.");
+  const colors = uniqueColors(palette.colors);
+  const values = colors.map(luminance);
+  if (colors.length > 32) warnings.push("Large palettes can be harder to keep consistent. Consider using ramps for a smaller game-ready set.");
+  if (colors.length < 4) warnings.push("Add a few midtones and highlights for cleaner sprites.");
+  if (values.length && Math.min(...values) > 0.18) warnings.push("No true dark color yet. Add one for outlines, shadows, and readable silhouettes.");
+  if (values.length && Math.max(...values) < 0.82) warnings.push("No bright highlight yet. Add one for shine, sparkle, and UI readability.");
+  if (values.length > 1 && Math.max(...values) - Math.min(...values) < 0.42) warnings.push("Palette contrast is low, so sprites may look flat at 1x size.");
+  const hasNearDuplicate = colors.some((left, index) => colors.slice(index + 1).some((right) => channelDistance(left, right) < 18));
+  if (hasNearDuplicate) warnings.push("Some colors are almost identical. Merge near-duplicates unless you need a tiny texture step.");
   return warnings;
 };
