@@ -2254,9 +2254,10 @@ button.active,
 
 .palette-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 10px;
   align-content: start;
+  min-width: 0;
 }
 
 .palette-card {
@@ -2310,22 +2311,29 @@ button.active,
 }
 
 .palette-card-swatches {
-  grid-template-columns: repeat(12, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .palette-card-swatches i {
   display: block;
-  aspect-ratio: 1;
-  min-height: 12px;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
   border: 1px solid color-mix(in srgb, var(--app-border-strong) 55%, transparent);
   border-radius: 4px;
 }
 
 .palette-card-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .palette-card-actions button,
@@ -2335,8 +2343,8 @@ button.active,
   justify-content: center;
   gap: 6px;
   min-width: 0;
-  min-height: 32px;
-  padding: 0 6px;
+  min-height: 34px;
+  padding: 0 4px;
   border: 1px solid var(--app-border);
   border-radius: 7px;
   color: var(--app-text);
@@ -2351,6 +2359,12 @@ button.active,
 .palette-card-actions button svg,
 .palette-card-actions a svg {
   flex: 0 0 auto;
+}
+
+.palette-card-actions span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .palette-card-actions button {

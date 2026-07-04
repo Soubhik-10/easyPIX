@@ -112,22 +112,27 @@ export const PalettesWorkspace = () => {
                 </div>
                 <p className="hint">{preset.note}</p>
                 <div className="palette-card-actions">
-                  <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")}>
-                    <Palette size={15} /> Use
+                  <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")} title={`Use ${preset.name}`}>
+                    <Palette size={15} />
+                    <span>Use</span>
                   </button>
-                  <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "append")}>
-                    <Plus size={15} /> Append
+                  <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "append")} title={`Append ${preset.name}`}>
+                    <Plus size={15} />
+                    <span>Append</span>
                   </button>
-                  <a href={preset.sourceUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink size={15} /> Source
+                  <a href={preset.sourceUrl} target="_blank" rel="noreferrer" title={`${preset.name} source`}>
+                    <ExternalLink size={15} />
+                    <span>Source</span>
                   </a>
                   <button
+                    title={`Download ${preset.name} JSON`}
                     onClick={() => {
                       const json = JSON.stringify({ type: "easyPIX-palette", version: 1, palette: { id: preset.id, name: preset.name, colors: preset.colors } }, null, 2);
                       downloadBlob(new Blob([json], { type: "application/json" }), `${preset.name.toLowerCase().replace(/\s+/g, "-")}.palette.json`);
                     }}
                   >
-                    <Download size={15} /> JSON
+                    <Download size={15} />
+                    <span>JSON</span>
                   </button>
                 </div>
               </article>
