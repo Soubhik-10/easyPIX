@@ -15,11 +15,19 @@ const categoryLabels: Record<PalettePreset["category"] | "all", string> = {
 export const PalettesWorkspace = () => {
   const project = useAppStore((state) => state.project)!;
   const [category, setCategory] = useState<PalettePreset["category"] | "all">("all");
+  const [query, setQuery] = useState("");
   const [paletteText, setPaletteText] = useState("");
   const [exportText, setExportText] = useState("");
   const activePalette = project.palettes[0];
   const warnings = useMemo(() => paletteWarnings(activePalette), [activePalette]);
-  const presets = useMemo(() => (category === "all" ? palettePresets : palettePresets.filter((preset) => preset.category === category)), [category]);
+  const presets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return palettePresets.filter((preset) => {
+      const matchesCategory = category === "all" || preset.category === category;
+      const matchesQuery = !normalizedQuery || `${preset.name} ${preset.credit} ${preset.note}`.toLowerCase().includes(normalizedQuery);
+      return matchesCategory && matchesQuery;
+    });
+  }, [category, query]);
 
   const exportCurrent = () => {
     const json = useAppStore.getState().exportPaletteJson();
@@ -72,12 +80,16 @@ export const PalettesWorkspace = () => {
         </aside>
 
         <main className="palette-browser">
-          <div className="palette-filter-row">
-            {(Object.keys(categoryLabels) as Array<PalettePreset["category"] | "all">).map((entry) => (
-              <button key={entry} className={category === entry ? "active" : ""} onClick={() => setCategory(entry)}>
-                {categoryLabels[entry]}
-              </button>
-            ))}
+          <div className="palette-browser-toolbar">
+            <div className="palette-filter-row">
+              {(Object.keys(categoryLabels) as Array<PalettePreset["category"] | "all">).map((entry) => (
+                <button key={entry} className={category === entry ? "active" : ""} onClick={() => setCategory(entry)}>
+                  {categoryLabels[entry]}
+                </button>
+              ))}
+            </div>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search palettes" aria-label="Search palettes" />
+            <span className="status-pill">{presets.length} shown</span>
           </div>
           <div className="palette-card-grid">
             {presets.map((preset) => (
