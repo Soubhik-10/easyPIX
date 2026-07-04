@@ -100,6 +100,7 @@ type AppState = {
   selectAll: () => void;
   deselect: () => void;
   deleteSelection: () => void;
+  clearActiveLayer: () => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
   rotateSelection: () => void;
@@ -781,6 +782,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer || !state.selection) return;
     set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
       ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, clearSelectionPixels(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, state.selection!)),
+    }))));
+  },
+  clearActiveLayer: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked) return;
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, Array.from({ length: entry.width * entry.height }, () => "transparent")),
     }))));
   },
   flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),

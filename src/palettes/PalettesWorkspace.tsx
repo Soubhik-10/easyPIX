@@ -114,15 +114,12 @@ export const PalettesWorkspace = () => {
                 <div className="palette-card-actions">
                   <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")} title={`Use ${preset.name}`}>
                     <Palette size={15} />
-                    <span>Use</span>
                   </button>
                   <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "append")} title={`Append ${preset.name}`}>
                     <Plus size={15} />
-                    <span>Append</span>
                   </button>
                   <a href={preset.sourceUrl} target="_blank" rel="noreferrer" title={`${preset.name} source`}>
                     <ExternalLink size={15} />
-                    <span>Source</span>
                   </a>
                   <button
                     title={`Download ${preset.name} JSON`}
@@ -132,7 +129,6 @@ export const PalettesWorkspace = () => {
                     }}
                   >
                     <Download size={15} />
-                    <span>JSON</span>
                   </button>
                 </div>
               </article>

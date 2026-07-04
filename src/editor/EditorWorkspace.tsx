@@ -193,6 +193,9 @@ export const EditorWorkspace = () => {
           <button onClick={() => useAppStore.getState().selectAll()}>Select all</button>
           <button onClick={() => useAppStore.getState().deselect()}>Deselect</button>
           <button onClick={() => useAppStore.getState().deleteSelection()} disabled={!selection}>Delete selection</button>
+          <button onClick={() => useAppStore.getState().clearActiveLayer()} title="Clear active layer on this frame">
+            <Trash2 size={16} /> Clear canvas
+          </button>
           <button onClick={() => useAppStore.getState().flipSelectionX()} disabled={!clipboard} title="Flip copied pixels horizontally">
             <FlipHorizontal size={16} />
           </button>

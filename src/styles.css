@@ -2341,7 +2341,7 @@ button.active,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 0;
   min-width: 0;
   min-height: 34px;
   padding: 0 4px;
@@ -2361,14 +2361,8 @@ button.active,
   flex: 0 0 auto;
 }
 
-.palette-card-actions span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .palette-card-actions button {
-  gap: 5px;
+  gap: 0;
 }
 
 .palette-card-actions button:hover,
