@@ -2074,7 +2074,9 @@ button.active,
   .art-pixel,
   .palette-strip,
   .palette-strip i,
-  .tiny-pixel-sprite {
+  .tiny-pixel-sprite,
+  .garden-plant,
+  .pixel-garden-sky i {
     animation: none;
   }
 }
@@ -2153,12 +2155,20 @@ button.active,
 }
 
 .start-panel,
-.recent-panel {
+.recent-panel,
+.pixel-garden-panel {
   min-height: 0;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface);
   box-shadow: var(--app-shadow);
+}
+
+.launcher-left-stack {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .start-panel {
@@ -2178,6 +2188,161 @@ button.active,
 .project-name-row input,
 .project-name-row button {
   min-height: 34px;
+}
+
+.pixel-garden-panel {
+  position: relative;
+  min-height: clamp(138px, 20vh, 220px);
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--app-surface-2) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--app-surface-2) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in srgb, #38bdf8 10%, var(--app-surface)), color-mix(in srgb, #22c55e 10%, var(--app-surface)));
+  background-size: 18px 18px, 18px 18px, auto;
+}
+
+.pixel-garden-sky,
+.pixel-garden-ground,
+.pixel-garden-plants,
+.pixel-garden-sign {
+  position: absolute;
+}
+
+.pixel-garden-sky {
+  inset: 18px 18px auto 18px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.pixel-garden-sky i {
+  width: 8px;
+  height: 8px;
+  background: #facc15;
+  box-shadow: 10px 10px 0 color-mix(in srgb, #38bdf8 70%, var(--app-surface));
+  animation: garden-twinkle 2.4s steps(2, end) infinite;
+}
+
+.pixel-garden-sky i:nth-child(2n) {
+  width: 6px;
+  height: 6px;
+  background: #fb7185;
+  animation-delay: 320ms;
+}
+
+.pixel-garden-ground {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  height: 42px;
+}
+
+.pixel-garden-ground i {
+  background: color-mix(in srgb, #22c55e 60%, var(--app-surface));
+  border-top: 2px solid color-mix(in srgb, #bbf7d0 62%, transparent);
+}
+
+.pixel-garden-ground i:nth-child(3n) {
+  background: color-mix(in srgb, #16a34a 62%, var(--app-surface));
+}
+
+.pixel-garden-plants {
+  left: 24px;
+  right: 24px;
+  bottom: 34px;
+  display: flex;
+  align-items: end;
+  justify-content: space-around;
+  height: 80px;
+}
+
+.garden-plant {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 36px;
+  transform-origin: bottom center;
+  animation: garden-sway 1.8s steps(3, end) infinite;
+}
+
+.garden-plant::before,
+.garden-plant::after {
+  content: "";
+  position: absolute;
+  image-rendering: pixelated;
+}
+
+.garden-plant.flower::before {
+  left: 7px;
+  bottom: 0;
+  width: 4px;
+  height: 25px;
+  background: #22c55e;
+}
+
+.garden-plant.flower::after {
+  left: 2px;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  background:
+    linear-gradient(90deg, transparent 0 4px, #fb7185 4px 10px, transparent 10px),
+    linear-gradient(transparent 0 4px, #facc15 4px 10px, transparent 10px);
+  box-shadow: 0 0 0 2px #fb7185;
+}
+
+.garden-plant.sprout::before {
+  left: 8px;
+  bottom: 0;
+  width: 4px;
+  height: 22px;
+  background: #16a34a;
+}
+
+.garden-plant.sprout::after {
+  left: 2px;
+  top: 10px;
+  width: 16px;
+  height: 8px;
+  background: #86efac;
+  box-shadow: 8px -7px 0 #22c55e;
+}
+
+.garden-plant.grass {
+  width: 34px;
+  height: 24px;
+  background:
+    linear-gradient(135deg, transparent 0 42%, #22c55e 42% 58%, transparent 58%),
+    linear-gradient(45deg, transparent 0 42%, #86efac 42% 58%, transparent 58%);
+  background-size: 10px 24px;
+}
+
+.pixel-garden-sign {
+  right: 18px;
+  bottom: 54px;
+  padding: 5px 8px;
+  border: 2px solid color-mix(in srgb, var(--app-border-strong) 70%, transparent);
+  border-radius: 4px;
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+@keyframes garden-sway {
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes garden-twinkle {
+  50% {
+    transform: translateY(3px);
+    opacity: 0.55;
+  }
 }
 
 .quick-start-list {
@@ -2320,9 +2485,17 @@ button.active,
     overflow: visible;
   }
 
+  .launcher-left-stack {
+    min-height: 0;
+  }
+
   .recent-panel {
     height: auto;
     max-height: 360px;
+  }
+
+  .pixel-garden-panel {
+    min-height: 140px;
   }
 }
 

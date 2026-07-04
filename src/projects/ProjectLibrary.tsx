@@ -180,20 +180,39 @@ export const ProjectLibrary = () => {
       </section>
 
       <section className="launcher-main">
-        <section className="start-panel">
-          <div className="panel-heading">
-            <h2><Palette size={16} /> Start a workspace</h2>
-          </div>
-          <div className="project-name-row">
-            <input value={name} onChange={(event) => setName(event.target.value)} aria-label="Project name" />
-            <button className="primary-action" onClick={() => void start("editor")}>
-              <Plus size={17} /> New
-            </button>
-            <button onClick={() => inputRef.current?.click()}>
-              <Import size={17} /> Import
-            </button>
-            <input ref={inputRef} type="file" accept=".pixelzip,.zip" onChange={onImport} hidden />
-          </div>
+        <section className="launcher-left-stack">
+          <section className="start-panel">
+            <div className="panel-heading">
+              <h2><Palette size={16} /> Start a workspace</h2>
+            </div>
+            <div className="project-name-row">
+              <input value={name} onChange={(event) => setName(event.target.value)} aria-label="Project name" />
+              <button className="primary-action" onClick={() => void start("editor")}>
+                <Plus size={17} /> New
+              </button>
+              <button onClick={() => inputRef.current?.click()}>
+                <Import size={17} /> Import
+              </button>
+              <input ref={inputRef} type="file" accept=".pixelzip,.zip" onChange={onImport} hidden />
+            </div>
+          </section>
+
+          <section className="pixel-garden-panel" aria-label="Tiny pixel garden">
+            <div className="pixel-garden-sky">
+              {Array.from({ length: 7 }, (_, index) => <i key={index} />)}
+            </div>
+            <div className="pixel-garden-ground">
+              {Array.from({ length: 18 }, (_, index) => <i key={index} />)}
+            </div>
+            <div className="pixel-garden-plants">
+              {["flower", "sprout", "flower", "grass", "sprout", "flower", "grass"].map((kind, index) => (
+                <span key={`${kind}-${index}`} className={`garden-plant ${kind}`} />
+              ))}
+            </div>
+            <div className="pixel-garden-sign">
+              <span>local files</span>
+            </div>
+          </section>
         </section>
 
         <aside className="recent-panel">
