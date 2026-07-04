@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
-import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
+import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById } from "../palettes/presets";
 import {
   adjustColor,
@@ -15,7 +15,9 @@ import {
   flipClipX,
   flipClipY,
   floodFill,
+  magicWandSelection,
   pastePixels,
+  pixelPerfectPoints,
   replaceColor,
   resizePixels,
   rotateClip,
@@ -26,6 +28,7 @@ import {
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type SceneBrush = "asset" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
+type SceneRotation = 0 | 90 | 180 | 270;
 
 type AppState = {
   projects: PixelProject[];
@@ -37,12 +40,17 @@ type AppState = {
   activeTilesetId: string | null;
   activeSceneId: string | null;
   sceneBrush: SceneBrush;
+  sceneFlipX: boolean;
+  sceneFlipY: boolean;
+  sceneRotation: SceneRotation;
   tool: ToolId;
   theme: ThemePreference;
   color: string;
   secondaryColor: string;
   brushSize: number;
   brushShape: "square" | "circle";
+  pixelPerfect: boolean;
+  brushStabilizer: number;
   mirrorX: boolean;
   mirrorY: boolean;
   zoom: number;
@@ -59,6 +67,7 @@ type AppState = {
   fps: number;
   strokeStart: { x: number; y: number } | null;
   strokeLast: { x: number; y: number } | null;
+  lassoPoints: { x: number; y: number }[];
   strokeHistoryBase: PixelProject | null;
   refreshProjects: () => Promise<void>;
   createNewProject: (name: string) => Promise<void>;
@@ -71,6 +80,8 @@ type AppState = {
   setColor: (color: string) => void;
   setBrushSize: (size: number) => void;
   setBrushShape: (shape: "square" | "circle") => void;
+  togglePixelPerfect: () => void;
+  setBrushStabilizer: (value: number) => void;
   toggleMirrorX: () => void;
   toggleMirrorY: () => void;
   setZoom: (zoom: number) => void;
@@ -129,6 +140,9 @@ type AppState = {
   paintSceneBrush: (x: number, y: number) => void;
   setSceneBrush: (brush: SceneBrush) => void;
   setSceneLayer: (layer: SceneLayer) => void;
+  toggleSceneFlipX: () => void;
+  toggleSceneFlipY: () => void;
+  rotateSceneBrush: () => void;
   importProject: (project: PixelProject) => Promise<void>;
 };
 
@@ -208,8 +222,26 @@ const layerForSceneBrush = (brush: SceneBrush, activeLayer: SceneLayer): SceneLa
 };
 
 const brushNeedsShadow = (brush: SceneBrush) => brush === "tree" || brush === "bush" || brush === "rock";
-const sceneCells = (scene: { width: number; height: number }, cells: (string | null)[]) =>
+const sceneCells = (scene: { width: number; height: number }, cells: SceneCell[]) =>
   Array.from({ length: scene.width * scene.height }, (_, index) => cells[index] ?? null);
+
+const sceneTileRef = (assetId: string, transform: { sceneFlipX: boolean; sceneFlipY: boolean; sceneRotation: SceneRotation }): SceneCell => ({
+  assetId,
+  flipX: transform.sceneFlipX || undefined,
+  flipY: transform.sceneFlipY || undefined,
+  rotation: transform.sceneRotation || undefined,
+});
+
+const lassoBounds = (points: { x: number; y: number }[]): Selection => {
+  if (!points.length) return null;
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const left = Math.min(...xs);
+  const right = Math.max(...xs);
+  const top = Math.min(...ys);
+  const bottom = Math.max(...ys);
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+};
 
 const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   const points: { x: number; y: number }[] = [];
@@ -332,12 +364,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTilesetId: null,
   activeSceneId: null,
   sceneBrush: "asset",
+  sceneFlipX: false,
+  sceneFlipY: false,
+  sceneRotation: 0,
   tool: "pencil",
   theme: (localStorage.getItem("pixel-editor-theme") as ThemePreference | null) ?? "system",
   color: "#1f1f29",
   secondaryColor: "transparent",
   brushSize: 1,
   brushShape: "square",
+  pixelPerfect: false,
+  brushStabilizer: 0,
   mirrorX: false,
   mirrorY: false,
   zoom: 12,
@@ -354,6 +391,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fps: 8,
   strokeStart: null,
   strokeLast: null,
+  lassoPoints: [],
   strokeHistoryBase: null,
 
   refreshProjects: async () => set({ projects: await listProjects() }),
@@ -417,6 +455,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setColor: (color) => set({ color }),
   setBrushSize: (brushSize) => set({ brushSize }),
   setBrushShape: (brushShape) => set({ brushShape }),
+  togglePixelPerfect: () => set({ pixelPerfect: !get().pixelPerfect }),
+  setBrushStabilizer: (brushStabilizer) => set({ brushStabilizer }),
   toggleMirrorX: () => set({ mirrorX: !get().mirrorX }),
   toggleMirrorY: () => set({ mirrorY: !get().mirrorY }),
   setZoom: (zoom) => set({ zoom }),
@@ -427,6 +467,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       strokeStart: { x, y },
       strokeLast: { x, y },
+      lassoPoints: state.tool === "lasso" ? [{ x, y }] : [],
       strokeHistoryBase: state.project && mutatingPointerTools.includes(state.tool) ? state.project : null,
     });
   },
@@ -445,8 +486,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ selection: { x, y, width: 1, height: 1 } });
       return;
     }
+    if (state.tool === "magic") {
+      set({ selection: magicWandSelection(pixelsForLayer(asset, state.activeFrameId, layer), asset.width, asset.height, x, y) });
+      return;
+    }
+    if (state.tool === "lasso") {
+      const points = [...state.lassoPoints, { x, y }];
+      set({ lassoPoints: points, selection: lassoBounds(points) });
+      return;
+    }
     if (![...strokeTools, "fill"].includes(state.tool)) return;
-    const points = state.strokeLast && strokeTools.includes(state.tool) ? linePoints(state.strokeLast.x, state.strokeLast.y, x, y) : [{ x, y }];
+    if (state.strokeLast && state.brushStabilizer > 0 && Math.abs(x - state.strokeLast.x) + Math.abs(y - state.strokeLast.y) < state.brushStabilizer) return;
+    const rawPoints = state.strokeLast && strokeTools.includes(state.tool) ? linePoints(state.strokeLast.x, state.strokeLast.y, x, y) : [{ x, y }];
+    const points = state.pixelPerfect && state.tool === "pencil" && state.brushSize === 1 ? pixelPerfectPoints(rawPoints) : rawPoints;
     set({
       ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
@@ -471,6 +523,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const left = Math.min(start.x, x);
       const top = Math.min(start.y, y);
       set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 }, strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+      return;
+    }
+    if (state.tool === "lasso") {
+      const points = [...state.lassoPoints, { x, y }];
+      set({ selection: lassoBounds(points), lassoPoints: [], strokeStart: null, strokeLast: null, strokeHistoryBase: null });
       return;
     }
     const drawTools = ["line", "rect", "ellipse"];
@@ -963,7 +1020,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return scene;
           const index = y * scene.width + x;
           const activeCells = sceneCells(scene, scene.layers[scene.activeLayer]);
-          return { ...scene, layers: { ...scene.layers, [scene.activeLayer]: activeCells.map((value, i) => (i === index ? get().activeAssetId : value)) } };
+          return { ...scene, layers: { ...scene.layers, [scene.activeLayer]: activeCells.map((value, i) => (i === index && get().activeAssetId ? sceneTileRef(get().activeAssetId!, get()) : value)) } };
         }),
       })),
     ),
@@ -1003,9 +1060,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             };
             const layers = {
               ...normalizedLayers,
-              [targetLayer]: normalizedLayers[targetLayer].map((value, i) => (i === index ? assetId : value)),
+              [targetLayer]: normalizedLayers[targetLayer].map((value, i) => (i === index ? sceneTileRef(assetId, state) : value)),
             };
-            if (shadowAssetId) layers.overlay = layers.overlay.map((value, i) => (i === index ? shadowAssetId : value));
+            if (shadowAssetId) layers.overlay = layers.overlay.map((value, i) => (i === index ? sceneTileRef(shadowAssetId, { sceneFlipX: false, sceneFlipY: false, sceneRotation: 0 }) : value));
             return { ...scene, activeLayer: targetLayer, layers };
           }),
         };
@@ -1013,6 +1070,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     ),
   setSceneBrush: (sceneBrush) => set({ sceneBrush }),
   setSceneLayer: (layer) => set(withProject(get(), (project) => ({ ...project, scenes: project.scenes.map((scene) => (scene.id === get().activeSceneId ? { ...scene, activeLayer: layer } : scene)) }))),
+  toggleSceneFlipX: () => set({ sceneFlipX: !get().sceneFlipX }),
+  toggleSceneFlipY: () => set({ sceneFlipY: !get().sceneFlipY }),
+  rotateSceneBrush: () => {
+    const next: Record<SceneRotation, SceneRotation> = { 0: 90, 90: 180, 180: 270, 270: 0 };
+    set({ sceneRotation: next[get().sceneRotation] });
+  },
   importProject: async (project) => {
     await saveProject(project);
     set({

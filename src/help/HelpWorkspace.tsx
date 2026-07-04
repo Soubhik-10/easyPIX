@@ -4,7 +4,7 @@ const manualSections = [
   {
     icon: Paintbrush,
     title: "Draw",
-    body: "Use Pencil, Eraser, Fill, Picker, shape tools, spray, dither, lighten, darken, and shadow helper. Raise zoom for precision, keep grid on for tile work, and use mirror mode for symmetric sprites.",
+    body: "Use Pencil, Eraser, Fill, Picker, shape tools, spray, dither, lighten, darken, shadow helper, Magic Wand, and Lasso. Pixel Perfect and Stabilizer help clean shaky mouse strokes.",
   },
   {
     icon: Layers,
@@ -29,7 +29,7 @@ const manualSections = [
   {
     icon: Grid3X3,
     title: "Tile Check",
-    body: "Tilesheet preview shows the set, Repeat preview shows one tile tiled many times, and Neighbor preview reveals edges. Add the active asset to the tileset if it is missing.",
+    body: "Tilesheet preview shows the set, Repeat preview shows one tile tiled many times, and Neighbor preview reveals edges. Sandbox scene cells now store tile asset, flip, and rotation metadata.",
   },
   {
     icon: Play,
@@ -82,6 +82,7 @@ export const HelpWorkspace = () => (
         <span>Ctrl V</span><p>Paste</p>
         <span>B/E/G/I</span><p>Pencil, Eraser, Fill, Picker</p>
         <span>A/R/L/D</span><p>Spray, Replace, Lighten, Darken</p>
+        <span>W/V</span><p>Magic Wand, Lasso</p>
         <span>[ ]</span><p>Brush size down/up</p>
       </div>
     </section>

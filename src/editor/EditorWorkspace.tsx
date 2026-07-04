@@ -51,6 +51,8 @@ const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
   { id: "rect", label: "Rectangle", icon: Square },
   { id: "ellipse", label: "Ellipse", icon: Circle },
   { id: "select", label: "Selection", icon: MousePointer2 },
+  { id: "magic", label: "Magic wand", icon: WandSparkles },
+  { id: "lasso", label: "Lasso", icon: MousePointer2 },
 ];
 
 const rangeStyle = (value: number, min: number, max: number) =>
@@ -67,6 +69,8 @@ export const EditorWorkspace = () => {
   const zoom = useAppStore((state) => state.zoom);
   const brushSize = useAppStore((state) => state.brushSize);
   const brushShape = useAppStore((state) => state.brushShape);
+  const pixelPerfect = useAppStore((state) => state.pixelPerfect);
+  const brushStabilizer = useAppStore((state) => state.brushStabilizer);
   const mirrorX = useAppStore((state) => state.mirrorX);
   const mirrorY = useAppStore((state) => state.mirrorY);
   const showGrid = useAppStore((state) => state.showGrid);
@@ -114,7 +118,7 @@ export const EditorWorkspace = () => {
     if (event.buttons !== 1) return;
     event.preventDefault();
     const point = pixelFromEvent(event);
-    if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
+    if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken", "lasso"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -172,6 +176,14 @@ export const EditorWorkspace = () => {
             <option value="square">Square</option>
             <option value="circle">Circle</option>
           </select>
+          <button className={pixelPerfect ? "active" : ""} onClick={() => useAppStore.getState().togglePixelPerfect()} title="Clean single-pixel pencil corners">
+            Pixel Perfect
+          </button>
+          <label>
+            Stabilizer
+            <input className="range-fill" style={rangeStyle(brushStabilizer, 0, 4)} type="range" min="0" max="4" value={brushStabilizer} onChange={(event) => useAppStore.getState().setBrushStabilizer(Number(event.target.value))} />
+            <span>{brushStabilizer}</span>
+          </label>
           <button className={mirrorX ? "active" : ""} onClick={() => useAppStore.getState().toggleMirrorX()} title="Mirror horizontally (M)">
             Mirror X
           </button>
@@ -355,6 +367,8 @@ export const EditorWorkspace = () => {
             <span>R</span><p>Replace color</p>
             <span>L</span><p>Lighten</p>
             <span>D</span><p>Darken</p>
+            <span>W</span><p>Magic wand</p>
+            <span>V</span><p>Lasso</p>
             <span>M</span><p>Mirror X</p>
             <span>[ ]</span><p>Brush size</p>
           </div>

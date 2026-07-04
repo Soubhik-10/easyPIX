@@ -64,9 +64,21 @@ export const App = () => {
         store.redo();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && key === "c") store.copy();
-      if ((event.ctrlKey || event.metaKey) && key === "x") store.cut();
-      if ((event.ctrlKey || event.metaKey) && key === "v") store.paste();
+      if ((event.ctrlKey || event.metaKey) && key === "c") {
+        event.preventDefault();
+        store.copy();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && key === "x") {
+        event.preventDefault();
+        store.cut();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && key === "v") {
+        event.preventDefault();
+        store.paste();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && key === "a") {
         event.preventDefault();
         store.selectAll();
@@ -90,6 +102,8 @@ export const App = () => {
       if (key === "r") store.setTool("replace");
       if (key === "l") store.setTool("lighten");
       if (key === "d") store.setTool("darken");
+      if (key === "w") store.setTool("magic");
+      if (key === "v") store.setTool("lasso");
       if (key === "m") store.toggleMirrorX();
       if (event.key === "[") store.setBrushSize(Math.max(1, store.brushSize - 1));
       if (event.key === "]") store.setBrushSize(Math.min(12, store.brushSize + 1));

@@ -41,6 +41,15 @@ export type Tileset = {
 
 export type SceneLayer = "ground" | "objects" | "overlay";
 
+export type SceneTileRef = {
+  assetId: string;
+  flipX?: boolean;
+  flipY?: boolean;
+  rotation?: 0 | 90 | 180 | 270;
+};
+
+export type SceneCell = string | SceneTileRef | null;
+
 export type Scene = {
   id: string;
   name: string;
@@ -48,7 +57,7 @@ export type Scene = {
   height: number;
   tileSize: number;
   activeLayer: SceneLayer;
-  layers: Record<SceneLayer, (string | null)[]>;
+  layers: Record<SceneLayer, SceneCell[]>;
 };
 
 export type PixelProject = {
@@ -77,6 +86,8 @@ export type ToolId =
   | "ellipse"
   | "move"
   | "select"
+  | "magic"
+  | "lasso"
   | "shadow";
 
 export type Workspace = "editor" | "import" | "palettes" | "animation" | "tileset" | "sandbox" | "help";

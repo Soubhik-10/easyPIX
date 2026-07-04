@@ -158,6 +158,46 @@ export const drawLine = (
   return next;
 };
 
+export const pixelPerfectPoints = (points: { x: number; y: number }[]) => {
+  if (points.length < 3) return points;
+  const cleaned: { x: number; y: number }[] = [points[0]];
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const prev = cleaned[cleaned.length - 1];
+    const current = points[i];
+    const next = points[i + 1];
+    const turnsCorner = prev.x !== current.x && current.y !== next.y && prev.y !== current.y && current.x !== next.x;
+    if (!turnsCorner) cleaned.push(current);
+  }
+  cleaned.push(points[points.length - 1]);
+  return cleaned;
+};
+
+export const magicWandSelection = (pixels: string[], width: number, height: number, startX: number, startY: number): Selection => {
+  if (startX < 0 || startY < 0 || startX >= width || startY >= height) return null;
+  const target = pixels[indexAt(startX, startY, width)];
+  const seen = new Set<number>();
+  const stack = [[startX, startY]];
+  let left = startX;
+  let right = startX;
+  let top = startY;
+  let bottom = startY;
+  while (stack.length) {
+    const point = stack.pop();
+    if (!point) continue;
+    const [x, y] = point;
+    if (x < 0 || y < 0 || x >= width || y >= height) continue;
+    const index = indexAt(x, y, width);
+    if (seen.has(index) || pixels[index] !== target) continue;
+    seen.add(index);
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+};
+
 export const drawRect = (
   pixels: string[],
   width: number,

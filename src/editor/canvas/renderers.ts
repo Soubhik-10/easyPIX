@@ -1,4 +1,4 @@
-import type { PixelAsset, PixelLayer, Scene, Selection } from "../../projects/types";
+import type { PixelAsset, PixelLayer, Scene, SceneCell, Selection } from "../../projects/types";
 
 export const layerPixelsForFrame = (asset: PixelAsset, frameId: string | null | undefined, layer: PixelLayer) => {
   const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
@@ -124,15 +124,19 @@ export const renderScene = (canvas: HTMLCanvasElement, scene: Scene, assets: Pix
   ctx.fillStyle = "#e8eadb";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   (["ground", "objects", "overlay"] as const).forEach((layerName) => {
-    scene.layers[layerName].forEach((assetId, index) => {
-      if (!assetId) return;
-      const asset = assets.find((entry) => entry.id === assetId);
+    scene.layers[layerName].forEach((cell: SceneCell, index) => {
+      if (!cell) return;
+      const tile = typeof cell === "string" ? { assetId: cell, rotation: 0 as const } : cell;
+      const asset = assets.find((entry) => entry.id === tile.assetId);
       if (!asset) return;
       const x = (index % scene.width) * scene.tileSize * scale;
       const y = Math.floor(index / scene.width) * scene.tileSize * scale;
       const assetScale = Math.max(1, (scene.tileSize / Math.max(asset.width, asset.height)) * scale);
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(x + (scene.tileSize * scale) / 2, y + (scene.tileSize * scale) / 2);
+      ctx.rotate(((tile.rotation ?? 0) * Math.PI) / 180);
+      ctx.scale(tile.flipX ? -1 : 1, tile.flipY ? -1 : 1);
+      ctx.translate(-(asset.width * assetScale) / 2, -(asset.height * assetScale) / 2);
       layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, assetScale));
       ctx.restore();
     });

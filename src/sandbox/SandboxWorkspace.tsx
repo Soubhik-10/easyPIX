@@ -1,5 +1,5 @@
 import { PointerEvent, useEffect, useRef } from "react";
-import { Download, Flower2, Leaf, Mountain, TreePine, Waves } from "lucide-react";
+import { Download, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, TreePine, Waves } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderScene } from "../editor/canvas/renderers";
 import { downloadBlob } from "../projects/importExport/zip";
@@ -22,6 +22,9 @@ export const SandboxWorkspace = () => {
   const scene = project.scenes.find((entry) => entry.id === useAppStore.getState().activeSceneId) ?? project.scenes[0];
   const activeAssetId = useAppStore((state) => state.activeAssetId);
   const sceneBrush = useAppStore((state) => state.sceneBrush);
+  const sceneFlipX = useAppStore((state) => state.sceneFlipX);
+  const sceneFlipY = useAppStore((state) => state.sceneFlipY);
+  const sceneRotation = useAppStore((state) => state.sceneRotation);
 
   useEffect(() => {
     if (canvasRef.current) renderScene(canvasRef.current, scene, project.assets, 2);
@@ -66,6 +69,19 @@ export const SandboxWorkspace = () => {
           Current asset brush
         </button>
         <p className="hint">Ground brushes paint ground. Props paint objects and add simple shadows automatically.</p>
+        <h2>Tile Transform</h2>
+        <div className="segmented">
+          <button className={sceneFlipX ? "active" : ""} onClick={() => useAppStore.getState().toggleSceneFlipX()} title="Flip tile horizontally">
+            <FlipHorizontal size={16} /> X
+          </button>
+          <button className={sceneFlipY ? "active" : ""} onClick={() => useAppStore.getState().toggleSceneFlipY()} title="Flip tile vertically">
+            <FlipVertical size={16} /> Y
+          </button>
+          <button onClick={() => useAppStore.getState().rotateSceneBrush()} title="Rotate tile brush 90 degrees">
+            <RotateCw size={16} /> {sceneRotation}°
+          </button>
+        </div>
+        <p className="hint">New tilemap cells store asset id, flip, and rotation in scene JSON.</p>
 
         <h2>Layers</h2>
         <div className="segmented">
