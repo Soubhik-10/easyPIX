@@ -2,7 +2,7 @@ import { PointerEvent, useEffect, useRef } from "react";
 import { Download, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, TreePine, Waves } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderScene } from "../editor/canvas/renderers";
-import { downloadBlob } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob } from "../projects/importExport/zip";
 import type { SceneLayer } from "../projects/types";
 
 const sceneBrushes = [
@@ -40,9 +40,9 @@ export const SandboxWorkspace = () => {
 
   const exportScenePng = () => {
     const canvas = document.createElement("canvas");
-    renderScene(canvas, scene, project.assets, 2, { grid: false });
+    renderScene(canvas, scene, project.assets, DEFAULT_PNG_EXPORT_SCALE, { grid: false });
     canvas.toBlob((blob) => {
-      if (blob) downloadBlob(blob, `${scene.name.replace(/\s+/g, "-").toLowerCase()}.png`);
+      if (blob) downloadBlob(blob, `${scene.name.replace(/\s+/g, "-").toLowerCase()}-${DEFAULT_PNG_EXPORT_SCALE}x.png`);
     }, "image/png");
   };
 

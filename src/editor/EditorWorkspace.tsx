@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { useAppStore, paletteWarnings } from "../app/store";
 import { renderAsset } from "./canvas/renderers";
-import { downloadBlob, exportAssetPng } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetPng } from "../projects/importExport/zip";
 import { importPixelFiles } from "../projects/importExport/importers";
 import { palettePresets, palettePresetById } from "../palettes/presets";
 import type { TemplateKind } from "../projects/factory";
@@ -94,7 +94,7 @@ export const EditorWorkspace = () => {
   const [assetName, setAssetName] = useState("New Asset");
   const [assetWidth, setAssetWidth] = useState(64);
   const [assetHeight, setAssetHeight] = useState(64);
-  const [exportScale, setExportScale] = useState(1);
+  const [exportScale, setExportScale] = useState(DEFAULT_PNG_EXPORT_SCALE);
   const [paletteText, setPaletteText] = useState("");
   const [palettePresetId, setPalettePresetId] = useState(palettePresets[0]?.id ?? "");
   const [rampColor, setRampColor] = useState(color);
@@ -412,6 +412,7 @@ export const EditorWorkspace = () => {
               <option value={2}>2x PNG</option>
               <option value={4}>4x PNG</option>
               <option value={8}>8x PNG</option>
+              <option value={16}>16x PNG</option>
             </select>
             <button onClick={() => downloadBlob(exportAssetPng(asset, exportScale), `${asset.name}-${exportScale}x.png`)}>
               <Download size={15} /> PNG

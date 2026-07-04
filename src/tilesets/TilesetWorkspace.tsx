@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderRepeatPreview, renderTilesheet } from "../editor/canvas/renderers";
-import { downloadBlob, exportAssetPng, exportTilesheetPng } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetPng, exportTilesheetPng } from "../projects/importExport/zip";
 
 export const TilesetWorkspace = () => {
   const sheetRef = useRef<HTMLCanvasElement | null>(null);
@@ -11,7 +11,7 @@ export const TilesetWorkspace = () => {
   const project = useAppStore((state) => state.project)!;
   const activeAssetId = useAppStore((state) => state.activeAssetId);
   const [tileSize, setTileSize] = useState(64);
-  const [exportScale, setExportScale] = useState(1);
+  const [exportScale, setExportScale] = useState(DEFAULT_PNG_EXPORT_SCALE);
   const tileset = project.tilesets.find((entry) => entry.id === useAppStore.getState().activeTilesetId) ?? project.tilesets[0];
   const assets = tileset.assetIds
     .map((id) => project.assets.find((asset) => asset.id === id))
@@ -68,12 +68,14 @@ export const TilesetWorkspace = () => {
                 <option value={1}>1x</option>
                 <option value={2}>2x</option>
                 <option value={4}>4x</option>
+                <option value={8}>8x</option>
+                <option value={16}>16x</option>
               </select>
             </label>
           </div>
           <div className="export-actions">
-            <button onClick={() => downloadBlob(exportAssetPng(activeAsset), `${activeAsset.name}.png`)}>
-              <Download size={16} /> Active PNG
+            <button onClick={() => downloadBlob(exportAssetPng(activeAsset, exportScale), `${activeAsset.name}-${exportScale}x.png`)}>
+              <Download size={16} /> Active {exportScale}x PNG
             </button>
             <button onClick={() => downloadBlob(exportTilesheetPng(assets, tileSize, tileSize, exportScale), `${tileset.name}-${exportScale}x.png`)}>
               <Download size={16} /> Tilesheet PNG

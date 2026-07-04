@@ -2,6 +2,8 @@ import JSZip from "jszip";
 import type { PixelAsset, PixelLayer, PixelProject } from "../types";
 import { layersForFrame } from "../../editor/canvas/renderers";
 
+export const DEFAULT_PNG_EXPORT_SCALE = 4;
+
 const compositeAssetToDataUrl = (asset: PixelAsset, layerIds?: string[], scale = 1, frameId?: string) => {
   const canvas = document.createElement("canvas");
   canvas.width = asset.width * scale;
@@ -94,13 +96,13 @@ export const downloadBlob = (blob: Blob, filename: string) => {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-export const exportAssetPng = (asset: PixelAsset, scale = 1) => {
+export const exportAssetPng = (asset: PixelAsset, scale = DEFAULT_PNG_EXPORT_SCALE) => {
   const base64 = compositeAssetToDataUrl(asset, undefined, scale, asset.frames[0]?.id);
   const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
   return new Blob([bytes], { type: "image/png" });
 };
 
-export const exportAssetFramePng = (asset: PixelAsset, frameId: string, scale = 1) => {
+export const exportAssetFramePng = (asset: PixelAsset, frameId: string, scale = DEFAULT_PNG_EXPORT_SCALE) => {
   const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
   const base64 = compositeAssetToDataUrl(asset, frame?.layerIds, scale, frame?.id);
   const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));

@@ -2,7 +2,7 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CopyPlus, Download, Edit3, ExternalLink, FileJson, ImagePlus, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { drawPixelLayer, layersForFrame, renderAsset } from "../editor/canvas/renderers";
-import { downloadBlob, exportAnimationJson, exportAssetFramePng } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAnimationJson, exportAssetFramePng } from "../projects/importExport/zip";
 import type { PixelAsset } from "../projects/types";
 
 const rangeStyle = (value: number, min: number, max: number) =>
@@ -176,8 +176,8 @@ export const AnimationWorkspace = () => {
           </button>
         ) : null}
         {activeFrame ? (
-          <button onClick={() => downloadBlob(exportAssetFramePng(asset, activeFrame.id, 1), `${asset.name}-${activeFrame.name}.png`)}>
-            <Download size={16} /> Active frame PNG
+          <button onClick={() => downloadBlob(exportAssetFramePng(asset, activeFrame.id, DEFAULT_PNG_EXPORT_SCALE), `${asset.name}-${activeFrame.name}-${DEFAULT_PNG_EXPORT_SCALE}x.png`)}>
+            <Download size={16} /> Active frame {DEFAULT_PNG_EXPORT_SCALE}x PNG
           </button>
         ) : null}
         <button onClick={exportSpritesheet}>

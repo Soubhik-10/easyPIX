@@ -9,7 +9,7 @@ import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
 import { PalettesWorkspace } from "../palettes/PalettesWorkspace";
-import { downloadBlob, exportAssetFramePng, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetFramePng, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
   const project = useAppStore((state) => state.project);
@@ -199,7 +199,7 @@ export const App = () => {
     try {
       await persist();
       if (!activeAsset || !activeFrame) throw new Error("No active art to export.");
-      downloadBlob(exportAssetFramePng(activeAsset, activeFrame.id, 1), `${activeAsset.name}-${activeFrame.name}.png`);
+      downloadBlob(exportAssetFramePng(activeAsset, activeFrame.id, DEFAULT_PNG_EXPORT_SCALE), `${activeAsset.name}-${activeFrame.name}-${DEFAULT_PNG_EXPORT_SCALE}x.png`);
       setExportStatus("exported");
     } catch (error) {
       setExportStatus("error");
@@ -275,8 +275,8 @@ export const App = () => {
           <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"} title={saveError ?? "Local autosave status"}>
             {saveLabel}
           </span>
-          <button onClick={() => void exportActivePng()} disabled={exportStatus === "exporting"} title={exportError ?? "Export active frame as PNG"}>
-            <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : "PNG"}
+          <button onClick={() => void exportActivePng()} disabled={exportStatus === "exporting"} title={exportError ?? `Export active frame as crisp ${DEFAULT_PNG_EXPORT_SCALE}x PNG`}>
+            <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : `${DEFAULT_PNG_EXPORT_SCALE}x PNG`}
           </button>
           <button onClick={() => void exportProjectBundle()} disabled={exportStatus === "exporting"} title={exportError ?? "Backup full project as .pixelzip"}>
             <Download size={16} /> Project backup
