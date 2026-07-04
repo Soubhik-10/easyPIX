@@ -1,6 +1,6 @@
 import type { PixelLayer, Selection } from "../../projects/types";
 
-export type StampKind = "heart" | "star" | "leaf" | "flower" | "sparkle" | "rock" | "mushroom" | "fence" | "window" | "door" | "bottle" | "lamp" | "book" | "chair" | "sign";
+export type StampKind = "heart" | "star" | "leaf" | "flower" | "sparkle" | "rock" | "mushroom" | "fence" | "window" | "bottle" | "lamp" | "book" | "chair" | "sign";
 export type CozyBrushKind = "grass" | "flower" | "dirt" | "water" | "stars" | "fireflies" | "snow" | "rain";
 export type PixelEffect = "outline" | "shadow" | "clean" | "readable" | "contrast" | "highlight" | "cozy" | "reduceColors";
 export type StampColors = { primary: string; accent: string; outline?: string };
@@ -148,7 +148,6 @@ const stampPatterns: Record<StampKind, string[]> = {
   mushroom: ["01110", "11111", "02220", "00200"],
   fence: ["10101", "11111", "10101", "10101"],
   window: ["1111", "1221", "1221", "1111"],
-  door: ["111", "122", "122", "121", "111"],
   bottle: ["010", "111", "121", "121", "111"],
   lamp: ["010", "111", "222", "010", "010"],
   book: ["11110", "12210", "12210", "11110"],

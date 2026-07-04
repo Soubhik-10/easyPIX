@@ -82,7 +82,6 @@ const stamps: { id: StampKind; label: string }[] = [
   { id: "mushroom", label: "Mushroom" },
   { id: "fence", label: "Fence" },
   { id: "window", label: "Window" },
-  { id: "door", label: "Door" },
   { id: "bottle", label: "Bottle" },
   { id: "lamp", label: "Lamp" },
   { id: "book", label: "Book" },
@@ -482,14 +481,14 @@ export const EditorWorkspace = () => {
         </section>
         <section className="panel">
           <h2><Flower2 size={16} /> Fun Drawing Helpers</h2>
-          <p className="hint">Stamps use their own fixed colors, so a heart stays a heart. Replace the colors here when you want a different set.</p>
+          <p className="hint">Heart uses fixed replaceable colors. Other stamps use your active brush color so props do not all turn pink.</p>
           <label className="compact-label">
             Shape stamp
             <select value={stampKind} onChange={(event) => { useAppStore.getState().setStampKind(event.target.value as StampKind); useAppStore.getState().setTool("stamp"); }}>
               {stamps.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
             </select>
           </label>
-          <div className="stamp-color-row" aria-label="Stamp colors">
+          <div className="stamp-color-row" aria-label="Heart stamp colors">
             <label>
               Main
               <input type="color" value={stampPrimaryColor} onChange={(event) => useAppStore.getState().setStampPrimaryColor(event.target.value)} />

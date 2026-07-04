@@ -83,6 +83,9 @@ describe("pixel operations", () => {
     const stamped = drawStamp(blank(12, 12), 12, 12, 6, 6, { primary: "#ff0000", accent: "#ffc0cb" }, "heart");
     expect(stamped.filter((color) => color === "#ff0000").length).toBeGreaterThan(4);
     expect(stamped.filter((color) => color === "#ffc0cb").length).toBeGreaterThan(4);
+    const windowStamp = drawStamp(blank(8, 8), 8, 8, 4, 4, { primary: "#8b5a2b", accent: "#facc15" }, "window");
+    expect(windowStamp).toContain("#8b5a2b");
+    expect(windowStamp).toContain("#facc15");
     const noisy = setPixel(blank(3, 3), 3, 3, 1, 1, "#ffffff");
     expect(applyBeginnerEffect(noisy, 3, 3, "clean")[4]).toBe("transparent");
   });

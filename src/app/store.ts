@@ -363,7 +363,12 @@ const paintAt = (pixels: string[], width: number, height: number, x: number, y: 
     if (state.tool === "magicInk") return magicInkBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
     if (state.tool === "cozy") return cozyBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.cozyBrushKind);
     if (state.tool === "ramp") return colorRampBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
-    if (state.tool === "stamp") return drawStamp(next, width, height, point.x, point.y, { primary: state.stampPrimaryColor, accent: state.stampAccentColor }, state.stampKind);
+    if (state.tool === "stamp") {
+      const stampColors = state.stampKind === "heart"
+        ? { primary: state.stampPrimaryColor, accent: state.stampAccentColor }
+        : { primary: state.color, accent: adjustColor(state.color, 45) };
+      return drawStamp(next, width, height, point.x, point.y, stampColors, state.stampKind);
+    }
     if (state.tool === "replace") {
       const target = next[point.y * width + point.x];
       return target ? replaceColor(next, target, state.color) : next;
