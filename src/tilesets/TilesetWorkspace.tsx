@@ -10,7 +10,7 @@ export const TilesetWorkspace = () => {
   const neighborRef = useRef<HTMLCanvasElement | null>(null);
   const project = useAppStore((state) => state.project)!;
   const activeAssetId = useAppStore((state) => state.activeAssetId);
-  const [tileSize, setTileSize] = useState(64);
+  const [tileSize, setTileSize] = useState(32);
   const [exportScale, setExportScale] = useState(DEFAULT_PNG_EXPORT_SCALE);
   const tileset = project.tilesets.find((entry) => entry.id === useAppStore.getState().activeTilesetId) ?? project.tilesets[0];
   const assets = tileset.assetIds

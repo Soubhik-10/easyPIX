@@ -82,6 +82,8 @@ export const EditorWorkspace = () => {
   const zoom = useAppStore((state) => state.zoom);
   const brushSize = useAppStore((state) => state.brushSize);
   const brushShape = useAppStore((state) => state.brushShape);
+  const blendAmount = useAppStore((state) => state.blendAmount);
+  const shadowStrength = useAppStore((state) => state.shadowStrength);
   const pixelPerfect = useAppStore((state) => state.pixelPerfect);
   const brushStabilizer = useAppStore((state) => state.brushStabilizer);
   const mirrorX = useAppStore((state) => state.mirrorX);
@@ -92,8 +94,8 @@ export const EditorWorkspace = () => {
   const activeFrameId = useAppStore((state) => state.activeFrameId);
   const [customColor, setCustomColor] = useState(color);
   const [assetName, setAssetName] = useState("New Asset");
-  const [assetWidth, setAssetWidth] = useState(64);
-  const [assetHeight, setAssetHeight] = useState(64);
+  const [assetWidth, setAssetWidth] = useState(32);
+  const [assetHeight, setAssetHeight] = useState(32);
   const [exportScale, setExportScale] = useState(DEFAULT_PNG_EXPORT_SCALE);
   const [paletteText, setPaletteText] = useState("");
   const [palettePresetId, setPalettePresetId] = useState(palettePresets[0]?.id ?? "");
@@ -304,6 +306,16 @@ export const EditorWorkspace = () => {
             <option value="square">Square</option>
             <option value="circle">Circle</option>
           </select>
+          <label title="Lighten/darken step and shadow depth">
+            Blend
+            <input className="range-fill" style={rangeStyle(blendAmount, 4, 64)} type="range" min="4" max="64" value={blendAmount} onChange={(event) => useAppStore.getState().setBlendAmount(Number(event.target.value))} />
+            <span>{blendAmount}</span>
+          </label>
+          <label title="Shadow helper darkness">
+            Shadow
+            <input className="range-fill" style={rangeStyle(shadowStrength, 8, 96)} type="range" min="8" max="96" value={shadowStrength} onChange={(event) => useAppStore.getState().setShadowStrength(Number(event.target.value))} />
+            <span>{shadowStrength}</span>
+          </label>
           <button className={pixelPerfect ? "active" : ""} onClick={() => useAppStore.getState().togglePixelPerfect()} title="Clean single-pixel pencil corners">
             Pixel Perfect
           </button>

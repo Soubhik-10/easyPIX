@@ -1063,6 +1063,46 @@ textarea {
   .preview-grid {
     grid-template-columns: 1fr;
   }
+
+  .animation-layout {
+    grid-template-rows: auto auto minmax(360px, 1fr) 132px;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .professional-animation .animation-controls,
+  .professional-animation .frame-source-panel,
+  .animation-preview {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .frame-source-list {
+    max-height: 360px;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  select,
+  input {
+    min-height: 40px;
+  }
+
+  .tool-rail .icon-button,
+  .stage-toolbar button,
+  .stage-toolbar select,
+  .mobile-editor-bar button,
+  .frame-actions [role="button"] {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .frame-cell {
+    min-width: 340px;
+    height: 118px;
+  }
 }
 
 /* Fast UI polish layer: keeps existing layout behavior, upgrades the feel. */
@@ -2573,7 +2613,7 @@ button.active,
 
 .palette-card-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
   max-width: 100%;

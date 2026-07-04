@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
 import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
-import { palettePresetById } from "../palettes/presets";
+import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
   adjustColor,
   clearSelectionPixels,
@@ -49,6 +49,8 @@ type AppState = {
   secondaryColor: string;
   brushSize: number;
   brushShape: "square" | "circle";
+  blendAmount: number;
+  shadowStrength: number;
   pixelPerfect: boolean;
   brushStabilizer: number;
   mirrorX: boolean;
@@ -81,6 +83,8 @@ type AppState = {
   setColor: (color: string) => void;
   setBrushSize: (size: number) => void;
   setBrushShape: (shape: "square" | "circle") => void;
+  setBlendAmount: (amount: number) => void;
+  setShadowStrength: (amount: number) => void;
   togglePixelPerfect: () => void;
   setBrushStabilizer: (value: number) => void;
   toggleMirrorX: () => void;
@@ -126,6 +130,7 @@ type AppState = {
   addPaletteRamp: (color: string) => void;
   sortPalette: () => void;
   applyPalettePreset: (presetId: string, mode: "replace" | "append") => void;
+  setDefaultPalettePreset: (presetId: string) => void;
   exportPaletteJson: () => string;
   importPaletteJson: (text: string) => void;
   importPaletteText: (text: string) => void;
@@ -273,12 +278,12 @@ const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   return points;
 };
 
-const shadeColor = (hex: string) => {
+const shadeColor = (hex: string, amount: number) => {
   if (!hex.startsWith("#") || hex.length !== 7) return "rgba(0,0,0,0.28)";
   const value = Number.parseInt(hex.slice(1), 16);
-  const r = Math.max(0, ((value >> 16) & 255) - 42);
-  const g = Math.max(0, ((value >> 8) & 255) - 42);
-  const b = Math.max(0, (value & 255) - 42);
+  const r = Math.max(0, ((value >> 16) & 255) - amount);
+  const g = Math.max(0, ((value >> 8) & 255) - amount);
+  const b = Math.max(0, (value & 255) - amount);
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 };
 
@@ -351,10 +356,10 @@ const paintAt = (pixels: string[], width: number, height: number, x: number, y: 
       const target = next[point.y * width + point.x];
       return target ? replaceColor(next, target, state.color) : next;
     }
-    if (state.tool === "shadow") return drawBrush(next, width, height, point.x, point.y, shadeColor(state.color), state.brushSize, state.brushShape);
+    if (state.tool === "shadow") return drawBrush(next, width, height, point.x, point.y, shadeColor(state.color, state.shadowStrength), state.brushSize, state.brushShape);
     if (state.tool === "lighten" || state.tool === "darken") {
       const existing = next[point.y * width + point.x];
-      const adjusted = existing && existing !== "transparent" ? adjustColor(existing, state.tool === "lighten" ? 18 : -18) : existing;
+      const adjusted = existing && existing !== "transparent" ? adjustColor(existing, state.tool === "lighten" ? state.blendAmount : -state.blendAmount) : existing;
       return adjusted ? drawBrush(next, width, height, point.x, point.y, adjusted, state.brushSize, state.brushShape) : next;
     }
     return drawBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
@@ -410,6 +415,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondaryColor: "transparent",
   brushSize: 1,
   brushShape: "square",
+  blendAmount: 18,
+  shadowStrength: 42,
   pixelPerfect: false,
   brushStabilizer: 0,
   mirrorX: false,
@@ -493,6 +500,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setColor: (color) => set({ color }),
   setBrushSize: (brushSize) => set({ brushSize }),
   setBrushShape: (brushShape) => set({ brushShape }),
+  setBlendAmount: (blendAmount) => set({ blendAmount }),
+  setShadowStrength: (shadowStrength) => set({ shadowStrength }),
   togglePixelPerfect: () => set({ pixelPerfect: !get().pixelPerfect }),
   setBrushStabilizer: (brushStabilizer) => set({ brushStabilizer }),
   toggleMirrorX: () => set({ mirrorX: !get().mirrorX }),
@@ -1022,6 +1031,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         ),
       })),
     );
+  },
+  setDefaultPalettePreset: (presetId) => {
+    setDefaultPalettePresetId(presetId);
+    get().applyPalettePreset(presetId, "replace");
   },
   exportPaletteJson: () => {
     const palette = get().project?.palettes[0];

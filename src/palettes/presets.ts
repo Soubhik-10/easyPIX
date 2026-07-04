@@ -8,6 +8,23 @@ export type PalettePreset = {
   colors: string[];
 };
 
+export const DEFAULT_PALETTE_PRESET_KEY = "easyPIX-default-palette-preset";
+export const defaultStarterPaletteName = "Starter Palette";
+export const defaultStarterPalette = [
+  "#1f1f29",
+  "#ffffff",
+  "#6b3f2a",
+  "#c77d3b",
+  "#f5c16c",
+  "#5a8f3d",
+  "#9bd16f",
+  "#4f7cc8",
+  "#88c7e8",
+  "#b86acb",
+  "#e36f8c",
+  "#f0a3a3",
+];
+
 export const palettePresets: PalettePreset[] = [
   {
     id: "pico8",
@@ -865,6 +882,93 @@ export const palettePresets: PalettePreset[] = [
       "#00177d",
     ],
   },
+  {
+    id: "forest-demo-24",
+    name: "Forest Demo 24",
+    category: "game-dev",
+    credit: "easyPIX curated forest-game palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Ready for grass, bark, leaves, dirt, warm lights, and readable cozy-game props.",
+    colors: ["#121816", "#1f2a24", "#304535", "#486b42", "#6c9a4d", "#9ecb6f", "#d5e89a", "#3b2a22", "#5c3b2a", "#8a5a36", "#bd8752", "#e0b879", "#2b3d4f", "#3f6380", "#6fa6a8", "#b8ded2", "#4b2f3d", "#7b4050", "#ba5d5d", "#ef9a72", "#f4d6a0", "#eef0dc", "#899084", "#ffffff"],
+  },
+  {
+    id: "desert-demo-24",
+    name: "Desert Demo 24",
+    category: "game-dev",
+    credit: "easyPIX curated desert-game palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Sand, clay, dry foliage, sunset shadows, ruins, and warm UI accents.",
+    colors: ["#17131a", "#2b1d22", "#4a2c2a", "#74412f", "#a65f38", "#d88945", "#f0b45f", "#ffe1a3", "#3b2f26", "#665038", "#96724c", "#c99b62", "#ecd59b", "#283b3d", "#3d665c", "#679b77", "#a8c891", "#532e45", "#86445b", "#c26467", "#ee9f7d", "#f6ead0", "#7c7f78", "#ffffff"],
+  },
+  {
+    id: "ocean-demo-24",
+    name: "Ocean Demo 24",
+    category: "game-dev",
+    credit: "easyPIX curated ocean-game palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Water ramps, foam, shells, coral, wet rocks, beach props, and night-sea shadows.",
+    colors: ["#071622", "#0c2838", "#16445b", "#236d83", "#32a0a9", "#65d4c9", "#b7f3df", "#f4ffe8", "#143040", "#25506b", "#4e7f9a", "#8db7bf", "#d7dfca", "#3a2730", "#69404d", "#a65f67", "#e0897d", "#f4bea1", "#3f3528", "#7b6040", "#c09a61", "#efd28a", "#ffffff", "#1a1d2d"],
+  },
+  {
+    id: "cyberpunk-demo-24",
+    name: "Cyberpunk Demo 24",
+    category: "game-dev",
+    credit: "easyPIX curated neon-game palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Neon signs, dark streets, screens, energy effects, and readable high-contrast sprites.",
+    colors: ["#05070f", "#0d1021", "#191a35", "#2a2557", "#49317d", "#7a3eb2", "#c64dff", "#f5a6ff", "#10283f", "#155b7a", "#1da6b8", "#3df7e1", "#d8fff8", "#32172b", "#7f1d4d", "#d72666", "#ff4f7d", "#ff9a7a", "#40351f", "#8b6824", "#ffd447", "#fff7ae", "#b5c7ff", "#ffffff"],
+  },
+  {
+    id: "nes-inspired",
+    name: "NES Inspired",
+    category: "retro-hardware",
+    credit: "Nintendo Entertainment System inspired approximation",
+    sourceUrl: "https://en.wikipedia.org/wiki/Nintendo_Entertainment_System",
+    note: "Crunchy console-like colors for platformer tests, sprites, menus, and retro restrictions.",
+    colors: ["#000000", "#7c7c7c", "#bcbcbc", "#ffffff", "#0000fc", "#0078f8", "#3cbcfc", "#a4e4fc", "#4428bc", "#6844fc", "#9878f8", "#d8b8f8", "#940084", "#d800cc", "#f878f8", "#f8b8f8", "#a80020", "#e40058", "#f85898", "#f8a4c0", "#a81000", "#f83800", "#f87858", "#f0d0b0", "#881400", "#e45c10", "#fca044", "#fce0a8", "#503000", "#ac7c00", "#f8b800", "#f8d878"],
+  },
+  {
+    id: "cozy-ui-20",
+    name: "Cozy UI 20",
+    category: "game-dev",
+    credit: "easyPIX curated interface palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Soft but readable colors for inventory icons, buttons, panels, labels, and game UI mockups.",
+    colors: ["#15161f", "#27293a", "#3f4358", "#686f85", "#a0a8b8", "#eef2f0", "#fff8df", "#f1d08a", "#d8925b", "#9b5840", "#5f3a3d", "#2e4a42", "#4d7a52", "#83ad65", "#c8d98b", "#315b70", "#5797a8", "#9ed0c8", "#b85c7a", "#ef91a8"],
+  },
+  {
+    id: "winter-demo-20",
+    name: "Winter Demo 20",
+    category: "game-dev",
+    credit: "easyPIX curated winter-game palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Snow, ice, cold shadows, cabins, warm windows, and winter-night props.",
+    colors: ["#08111f", "#13253a", "#213f5a", "#3a6680", "#6da1b5", "#a8d7df", "#e6f7f5", "#ffffff", "#2d2433", "#5a3b48", "#8d5860", "#c98678", "#f1c29b", "#3a2b24", "#6f4a30", "#b07a45", "#e0b765", "#eef0b0", "#6e7988", "#aab6c2"],
+  },
+  {
+    id: "monochrome-ink-8",
+    name: "Monochrome Ink 8",
+    category: "limited",
+    credit: "easyPIX value-study palette",
+    sourceUrl: "https://github.com/Soubhik-10/easyPIX",
+    note: "Eight clean values for practicing silhouettes, sprite readability, icons, and shadow control.",
+    colors: ["#08090b", "#1b1d22", "#343841", "#525966", "#747d8d", "#9aa5b5", "#c8d0dc", "#f7f8fb"],
+  },
 ];
 
 export const palettePresetById = (id: string) => palettePresets.find((preset) => preset.id === id);
+
+export const getDefaultPalettePresetId = () => {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem(DEFAULT_PALETTE_PRESET_KEY);
+};
+
+export const setDefaultPalettePresetId = (id: string) => {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(DEFAULT_PALETTE_PRESET_KEY, id);
+};
+
+export const getDefaultPalettePreset = () => {
+  const id = getDefaultPalettePresetId();
+  return id ? palettePresetById(id) : null;
+};

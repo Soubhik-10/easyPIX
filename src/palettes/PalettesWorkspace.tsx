@@ -115,6 +115,9 @@ export const PalettesWorkspace = () => {
                   <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")} title={`Use ${preset.name}`}>
                     <Palette size={15} />
                   </button>
+                  <button onClick={() => useAppStore.getState().setDefaultPalettePreset(preset.id)} title={`Set ${preset.name} as the default for new projects`}>
+                    Default
+                  </button>
                   <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "append")} title={`Append ${preset.name}`}>
                     <Plus size={15} />
                   </button>

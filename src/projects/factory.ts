@@ -1,4 +1,5 @@
 import type { PixelAsset, PixelLayer, PixelProject, Scene, Tileset } from "./types";
+import { defaultStarterPalette, defaultStarterPaletteName, getDefaultPalettePreset } from "../palettes/presets";
 
 export const uid = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
@@ -15,7 +16,7 @@ export const createLayer = (name = "Layer 1", width = 32, height = 32): PixelLay
   pixels: transparentPixels(width, height),
 });
 
-export const createAsset = (name = "Untitled Sprite", width = 64, height = 64): PixelAsset => {
+export const createAsset = (name = "Untitled Sprite", width = 32, height = 32): PixelAsset => {
   const layer = createLayer("Ink", width, height);
   return {
     id: uid("asset"),
@@ -175,30 +176,18 @@ export const createScene = (tileSize = 32): Scene => ({
 export const createTileset = (assetId: string): Tileset => ({
   id: uid("tileset"),
   name: "Main Tileset",
-  tileWidth: 64,
-  tileHeight: 64,
+  tileWidth: 32,
+  tileHeight: 32,
   assetIds: [assetId],
 });
 
 export const createProject = (name = "New Pixel Project"): PixelProject => {
-  const asset = createAsset("Sprite 1", 64, 64);
+  const asset = createAsset("Sprite 1", 32, 32);
+  const defaultPreset = getDefaultPalettePreset();
   const palette = {
     id: uid("palette"),
-    name: "Starter Palette",
-    colors: [
-      "#1f1f29",
-      "#ffffff",
-      "#6b3f2a",
-      "#c77d3b",
-      "#f5c16c",
-      "#5a8f3d",
-      "#9bd16f",
-      "#4f7cc8",
-      "#88c7e8",
-      "#b86acb",
-      "#e36f8c",
-      "#f0a3a3",
-    ],
+    name: defaultPreset?.name ?? defaultStarterPaletteName,
+    colors: defaultPreset?.colors ?? defaultStarterPalette,
   };
   return {
     id: uid("project"),
