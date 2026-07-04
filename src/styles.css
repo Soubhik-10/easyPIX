@@ -772,6 +772,55 @@ textarea {
   color: white;
 }
 
+.leave-guard {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(7, 11, 19, 0.54);
+  backdrop-filter: blur(6px);
+}
+
+.leave-guard-panel {
+  display: grid;
+  gap: 14px;
+  width: min(440px, 100%);
+  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.leave-guard-panel h2,
+.leave-guard-panel p {
+  margin: 0;
+}
+
+.leave-guard-panel p {
+  color: var(--app-muted);
+  line-height: 1.45;
+}
+
+.leave-guard-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.danger-action {
+  border-color: color-mix(in srgb, var(--app-danger) 48%, var(--app-border));
+  color: var(--app-danger);
+  background: color-mix(in srgb, var(--app-danger) 8%, var(--app-surface));
+}
+
+.danger-action:hover {
+  border-color: var(--app-danger);
+  background: color-mix(in srgb, var(--app-danger) 14%, var(--app-surface));
+}
+
 .icon-danger {
   color: #8e2f2f;
 }

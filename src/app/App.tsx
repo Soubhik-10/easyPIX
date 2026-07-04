@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
 import { useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
@@ -24,6 +24,8 @@ export const App = () => {
   const canRedo = useAppStore((state) => state.future.length > 0);
   const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [leavePromptOpen, setLeavePromptOpen] = useState(false);
+  const browserBackArmed = useRef(false);
 
   useEffect(() => {
     const applyTheme = () => {
@@ -43,9 +45,60 @@ export const App = () => {
 
   useEffect(() => {
     if (!project) return;
-    const handle = window.setTimeout(() => void persist(), 650);
+    const handle = window.setTimeout(() => void persist(), 350);
     return () => window.clearTimeout(handle);
   }, [project, persist]);
+
+  useEffect(() => {
+    if (!project) return;
+    const handle = window.setInterval(() => void useAppStore.getState().persist(), 5000);
+    return () => window.clearInterval(handle);
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!project) return;
+    const saveNow = () => {
+      const current = useAppStore.getState();
+      if (current.project) void current.persist();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      saveNow();
+      const current = useAppStore.getState();
+      if (!current.project || current.saveStatus === "saved") return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", saveNow);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", saveNow);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!project) {
+      browserBackArmed.current = false;
+      return;
+    }
+    if (!browserBackArmed.current) {
+      window.history.pushState({ easyPixProjectGuard: true }, "", window.location.href);
+      browserBackArmed.current = true;
+    }
+    const onPopState = () => {
+      if (!useAppStore.getState().project) return;
+      window.history.pushState({ easyPixProjectGuard: true }, "", window.location.href);
+      void useAppStore.getState().persist();
+      setLeavePromptOpen(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [project?.id]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -123,6 +176,18 @@ export const App = () => {
 
   if (!project) return <ProjectLibrary />;
 
+  const requestProjectExit = () => {
+    void persist();
+    setLeavePromptOpen(true);
+  };
+
+  const saveAndCloseProject = async () => {
+    await persist();
+    browserBackArmed.current = false;
+    setLeavePromptOpen(false);
+    useAppStore.setState({ project: null });
+  };
+
   const exportZip = async () => {
     setExportStatus("exporting");
     setExportError(null);
@@ -151,7 +216,7 @@ export const App = () => {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <button className="brand brand-button" onClick={() => useAppStore.setState({ project: null })} title="Go home">
+        <button className="brand brand-button" onClick={requestProjectExit} title="Go home">
           <Sparkles size={18} />
           <span>easyPIX</span>
         </button>
@@ -202,7 +267,7 @@ export const App = () => {
             <option value="dark">Dark</option>
           </select>
           <Moon size={16} aria-hidden="true" />
-          <button onClick={() => useAppStore.setState({ project: null })} title="Back to projects">
+          <button onClick={requestProjectExit} title="Back to projects">
             <FolderOpen size={16} /> Projects
           </button>
         </div>
@@ -217,6 +282,26 @@ export const App = () => {
       <button className="floating-add" onClick={() => useAppStore.getState().addAsset()} title="Add asset">
         <Plus size={20} />
       </button>
+      {leavePromptOpen ? (
+        <div className="leave-guard" role="dialog" aria-modal="true" aria-labelledby="leave-guard-title">
+          <section className="leave-guard-panel">
+            <h2 id="leave-guard-title">Save before leaving?</h2>
+            <p>
+              easyPIX autosaves locally, but your latest strokes may still be saving. Save now before going back to Projects.
+            </p>
+            <div className="leave-guard-actions">
+              <button className="primary-action" onClick={() => void saveAndCloseProject()}>
+                <Save size={16} /> Save and go
+              </button>
+              <button onClick={() => { setLeavePromptOpen(false); void persist(); }}>Stay here</button>
+              <button className="danger-action" onClick={() => { browserBackArmed.current = false; setLeavePromptOpen(false); useAppStore.setState({ project: null }); }}>
+                Go without saving
+              </button>
+            </div>
+            <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"}>{saveLabel}</span>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 };
