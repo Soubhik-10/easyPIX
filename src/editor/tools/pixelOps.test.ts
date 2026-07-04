@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustColor, applyBeginnerEffect, autoOutlinePixels, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, drawStamp, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, setPixel } from "./pixelOps";
+import { adjustColor, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, setPixel } from "./pixelOps";
 import type { PixelLayer } from "../../projects/types";
 
 const blank = (width: number, height: number) => Array.from({ length: width * height }, () => "transparent");
@@ -72,21 +72,4 @@ describe("pixel operations", () => {
     expect(points[points.length - 1]).toEqual({ x: 1, y: 1 });
   });
 
-  it("adds outlines around solid pixels", () => {
-    const pixels = setPixel(blank(3, 3), 3, 3, 1, 1, "#ff0000");
-    const outlined = autoOutlinePixels(pixels, 3, 3, "#000000");
-    expect(outlined.filter((color) => color === "#000000")).toHaveLength(4);
-    expect(outlined[4]).toBe("#ff0000");
-  });
-
-  it("draws deterministic stamps and cleans lonely pixels", () => {
-    const stamped = drawStamp(blank(12, 12), 12, 12, 6, 6, { primary: "#ff0000", accent: "#ffc0cb" }, "heart");
-    expect(stamped.filter((color) => color === "#ff0000").length).toBeGreaterThan(4);
-    expect(stamped.filter((color) => color === "#ffc0cb").length).toBeGreaterThan(4);
-    const windowStamp = drawStamp(blank(8, 8), 8, 8, 4, 4, { primary: "#8b5a2b", accent: "#facc15" }, "window");
-    expect(windowStamp).toContain("#8b5a2b");
-    expect(windowStamp).toContain("#facc15");
-    const noisy = setPixel(blank(3, 3), 3, 3, 1, 1, "#ffffff");
-    expect(applyBeginnerEffect(noisy, 3, 3, "clean")[4]).toBe("transparent");
-  });
 });

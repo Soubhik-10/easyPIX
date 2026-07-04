@@ -1,10 +1,5 @@
 import type { PixelLayer, Selection } from "../../projects/types";
 
-export type StampKind = "heart" | "star" | "leaf" | "flower" | "sparkle" | "rock" | "mushroom" | "fence" | "window" | "bottle" | "lamp" | "book" | "chair" | "sign";
-export type CozyBrushKind = "grass" | "flower" | "dirt" | "water" | "stars" | "fireflies" | "snow" | "rain";
-export type PixelEffect = "outline" | "shadow" | "clean" | "readable" | "contrast" | "highlight" | "cozy" | "reduceColors";
-export type StampColors = { primary: string; accent: string; outline?: string };
-
 export const indexAt = (x: number, y: number, width: number) => y * width + x;
 
 export const setPixel = (pixels: string[], width: number, height: number, x: number, y: number, color: string) => {
@@ -22,15 +17,6 @@ export const adjustColor = (color: string, amount: number) => {
   );
   return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 };
-
-const isSolid = (color: string | undefined) => Boolean(color && color !== "transparent");
-
-const normalizeSelection = (width: number, height: number, selection?: Selection) => ({
-  x: Math.max(0, selection?.x ?? 0),
-  y: Math.max(0, selection?.y ?? 0),
-  width: Math.max(1, Math.min(width, selection?.width ?? width)),
-  height: Math.max(1, Math.min(height, selection?.height ?? height)),
-});
 
 export const drawBrush = (
   pixels: string[],
@@ -92,152 +78,6 @@ export const ditherBrush = (
     }
   }
   return next;
-};
-
-export const magicInkBrush = (pixels: string[], width: number, height: number, x: number, y: number, color: string, size: number, shape: "square" | "circle") => {
-  let next = drawBrush(pixels, width, height, x, y, color, size, shape);
-  next = drawBrush(next, width, height, x - 1, y - 1, adjustColor(color, 38), Math.max(1, Math.floor(size / 2)), shape);
-  return drawBrush(next, width, height, x + 1, y + 1, adjustColor(color, -46), Math.max(1, Math.floor(size / 2)), shape);
-};
-
-export const colorRampBrush = (pixels: string[], width: number, height: number, x: number, y: number, color: string, size: number, shape: "square" | "circle") => {
-  let next = drawBrush(pixels, width, height, x, y, color, size, shape);
-  next = drawBrush(next, width, height, x - 1, y - 1, adjustColor(color, 48), 1, "square");
-  next = drawBrush(next, width, height, x + 1, y + 1, adjustColor(color, -56), 1, "square");
-  return next;
-};
-
-export const cozyBrush = (pixels: string[], width: number, height: number, x: number, y: number, color: string, size: number, kind: CozyBrushKind) => {
-  let next = [...pixels];
-  const radius = Math.max(2, size + 1);
-  const marks = radius * 3;
-  const palette: Record<CozyBrushKind, string[]> = {
-    grass: [color, adjustColor(color, 34), adjustColor(color, -28)],
-    flower: [color, "#f472b6", "#facc15", "#86efac"],
-    dirt: [color, "#8b5a2b", "#c08457", "#5f3b24"],
-    water: [color, "#38bdf8", "#0ea5e9", "#dbeafe"],
-    stars: [color, "#ffffff", "#fde68a", "#bae6fd"],
-    fireflies: [color, "#fef08a", "#bef264", "#ffffff"],
-    snow: [color, "#ffffff", "#dbeafe", "#bfdbfe"],
-    rain: [color, "#93c5fd", "#38bdf8", "#dbeafe"],
-  };
-  for (let i = 0; i < marks; i += 1) {
-    const px = x + (((x * 13 + y * 7 + i * 5) % (radius * 2 + 1)) - radius);
-    const py = y + (((x * 5 + y * 17 + i * 3) % (radius * 2 + 1)) - radius);
-    const c = palette[kind][i % palette[kind].length];
-    if (kind === "rain") {
-      next = setPixel(next, width, height, px, py, c);
-      next = setPixel(next, width, height, px, py + 1, c);
-    } else if (kind === "flower" && i % 4 === 0) {
-      next = setPixel(next, width, height, px, py, c);
-      next = setPixel(next, width, height, px + 1, py, c);
-    } else {
-      next = setPixel(next, width, height, px, py, c);
-    }
-  }
-  return next;
-};
-
-const stampPatterns: Record<StampKind, string[]> = {
-  heart: ["0011001100", "0111111110", "1112222111", "1122222211", "1112222111", "0111221110", "0011111100", "0001111000", "0000110000"],
-  star: ["00100", "10101", "01110", "10101", "00100"],
-  leaf: ["0010", "0111", "1110", "0100"],
-  flower: ["010", "121", "010"],
-  sparkle: ["010", "111", "010"],
-  rock: ["0110", "1221", "1111", "0110"],
-  mushroom: ["01110", "11111", "02220", "00200"],
-  fence: ["10101", "11111", "10101", "10101"],
-  window: ["1111", "1221", "1221", "1111"],
-  bottle: ["010", "111", "121", "121", "111"],
-  lamp: ["010", "111", "222", "010", "010"],
-  book: ["11110", "12210", "12210", "11110"],
-  chair: ["101", "111", "010", "010"],
-  sign: ["11111", "12221", "11111", "00100", "00100"],
-};
-
-export const drawStamp = (pixels: string[], width: number, height: number, x: number, y: number, colors: StampColors, kind: StampKind) => {
-  let next = [...pixels];
-  const pattern = stampPatterns[kind];
-  const originY = y - Math.floor(pattern.length / 2);
-  const originX = x - Math.floor(pattern[0].length / 2);
-  const swatches = { "1": colors.primary, "2": colors.accent || adjustColor(colors.primary, 45), "3": colors.outline || "#1f1f29" } as Record<string, string>;
-  pattern.forEach((row, yy) => {
-    [...row].forEach((cell, xx) => {
-      if (cell !== "0") next = setPixel(next, width, height, originX + xx, originY + yy, swatches[cell] ?? colors.primary);
-    });
-  });
-  return next;
-};
-
-export const autoOutlinePixels = (pixels: string[], width: number, height: number, color = "#1f1f29", selection?: Selection) => {
-  const area = normalizeSelection(width, height, selection);
-  let next = [...pixels];
-  for (let y = area.y; y < area.y + area.height; y += 1) {
-    for (let x = area.x; x < area.x + area.width; x += 1) {
-      if (!isSolid(pixels[indexAt(x, y, width)])) continue;
-      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
-        const tx = x + dx;
-        const ty = y + dy;
-        if (tx < 0 || ty < 0 || tx >= width || ty >= height) return;
-        if (!isSolid(pixels[indexAt(tx, ty, width)])) next = setPixel(next, width, height, tx, ty, color);
-      });
-    }
-  }
-  return next;
-};
-
-export const dropShadowPixels = (pixels: string[], width: number, height: number, color = "rgba(31, 41, 55, 0.30)", selection?: Selection) => {
-  const area = normalizeSelection(width, height, selection);
-  let next = [...pixels];
-  for (let y = area.y + area.height - 1; y >= area.y; y -= 1) {
-    for (let x = area.x + area.width - 1; x >= area.x; x -= 1) {
-      if (!isSolid(pixels[indexAt(x, y, width)])) continue;
-      if (!isSolid(pixels[indexAt(x + 2, y + 2, width)])) next = setPixel(next, width, height, x + 2, y + 2, color);
-    }
-  }
-  return next;
-};
-
-export const cleanPixelNoise = (pixels: string[], width: number, height: number, selection?: Selection) => {
-  const area = normalizeSelection(width, height, selection);
-  const next = [...pixels];
-  for (let y = area.y; y < area.y + area.height; y += 1) {
-    for (let x = area.x; x < area.x + area.width; x += 1) {
-      const idx = indexAt(x, y, width);
-      if (!isSolid(pixels[idx])) continue;
-      const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => isSolid(pixels[indexAt(x + dx, y + dy, width)])).length;
-      if (neighbors === 0) next[idx] = "transparent";
-    }
-  }
-  return next;
-};
-
-export const applyBeginnerEffect = (pixels: string[], width: number, height: number, effect: PixelEffect, selection?: Selection): string[] => {
-  if (effect === "outline") return autoOutlinePixels(pixels, width, height, "#1f1f29", selection);
-  if (effect === "shadow") return dropShadowPixels(pixels, width, height, "rgba(31, 41, 55, 0.30)", selection);
-  if (effect === "clean") return cleanPixelNoise(pixels, width, height, selection);
-  const area = normalizeSelection(width, height, selection);
-  if (effect === "readable") return autoOutlinePixels(pixels.map((pixel) => (isSolid(pixel) ? adjustColor(pixel, 8) : pixel)), width, height, "#1f1f29", selection);
-  if (effect === "contrast") return pixels.map((pixel) => (isSolid(pixel) ? adjustColor(pixel, pixel > "#888888" ? 24 : -24) : pixel));
-  if (effect === "highlight") {
-    let next = [...pixels];
-    for (let y = area.y; y < area.y + area.height; y += 1) {
-      for (let x = area.x; x < area.x + area.width; x += 1) if (isSolid(pixels[indexAt(x, y, width)]) && (x + y) % 4 === 0) next = setPixel(next, width, height, x, y, adjustColor(pixels[indexAt(x, y, width)], 36));
-    }
-    return next;
-  }
-  if (effect === "cozy") {
-    let next = [...pixels];
-    for (let y = area.y; y < area.y + area.height; y += 1) {
-      for (let x = area.x; x < area.x + area.width; x += 1) if (isSolid(pixels[indexAt(x, y, width)]) && (x + y) % 4 === 0) next = setPixel(next, width, height, x, y, adjustColor(pixels[indexAt(x, y, width)], 36));
-    }
-    return dropShadowPixels(next, width, height, "rgba(31, 41, 55, 0.22)", selection);
-  }
-  if (effect === "reduceColors") {
-    const colors = [...new Set(pixels.filter(isSolid))].slice(0, 16);
-    return pixels.map((pixel) => (!isSolid(pixel) || colors.includes(pixel) ? pixel : colors[0] ?? pixel));
-  }
-  return pixels;
 };
 
 export const replaceColor = (pixels: string[], target: string, replacement: string) =>

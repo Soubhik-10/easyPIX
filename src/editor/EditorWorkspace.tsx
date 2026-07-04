@@ -12,7 +12,6 @@ import {
   Eraser,
   Eye,
   EyeOff,
-  Flower2,
   FileJson,
   FlipHorizontal,
   FlipVertical,
@@ -43,7 +42,6 @@ import { importPixelFiles } from "../projects/importExport/importers";
 import { palettePresets, palettePresetById } from "../palettes/presets";
 import type { TemplateKind } from "../projects/factory";
 import type { ToolId } from "../projects/types";
-import type { CozyBrushKind, PixelEffect, StampKind } from "./tools/pixelOps";
 
 const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
   { id: "pencil", label: "Pencil", icon: Brush },
@@ -52,10 +50,6 @@ const tools: { id: ToolId; label: string; icon: typeof Brush }[] = [
   { id: "picker", label: "Picker", icon: Pipette },
   { id: "spray", label: "Spray", icon: Brush },
   { id: "dither", label: "Dither", icon: Grid2X2 },
-  { id: "magicInk", label: "Magic Ink", icon: WandSparkles },
-  { id: "stamp", label: "Stamp", icon: Flower2 },
-  { id: "cozy", label: "Cozy Brush", icon: Flower2 },
-  { id: "ramp", label: "Ramp Brush", icon: PaletteIcon },
   { id: "replace", label: "Replace color", icon: PaintBucket },
   { id: "lighten", label: "Lighten", icon: PaletteIcon },
   { id: "darken", label: "Darken", icon: PaletteIcon },
@@ -72,42 +66,6 @@ const rangeStyle = (value: number, min: number, max: number) =>
   ({ "--range-progress": `${Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))}%` }) as CSSProperties;
 
 const playfulTemplates: TemplateKind[] = ["grass", "flower", "water", "path", "tree", "bush", "rock", "coin", "hero"];
-const stamps: { id: StampKind; label: string }[] = [
-  { id: "heart", label: "Heart" },
-  { id: "star", label: "Star" },
-  { id: "leaf", label: "Leaf" },
-  { id: "flower", label: "Flower" },
-  { id: "sparkle", label: "Sparkle" },
-  { id: "rock", label: "Rock" },
-  { id: "mushroom", label: "Mushroom" },
-  { id: "fence", label: "Fence" },
-  { id: "window", label: "Window" },
-  { id: "bottle", label: "Bottle" },
-  { id: "lamp", label: "Lamp" },
-  { id: "book", label: "Book" },
-  { id: "chair", label: "Chair" },
-  { id: "sign", label: "Sign" },
-];
-const cozyBrushes: { id: CozyBrushKind; label: string }[] = [
-  { id: "grass", label: "Grass" },
-  { id: "flower", label: "Flowers" },
-  { id: "dirt", label: "Dirt" },
-  { id: "water", label: "Water shine" },
-  { id: "stars", label: "Stars" },
-  { id: "fireflies", label: "Fireflies" },
-  { id: "snow", label: "Snow" },
-  { id: "rain", label: "Rain" },
-];
-const drawingEffects: { id: PixelEffect; label: string }[] = [
-  { id: "readable", label: "Make readable" },
-  { id: "contrast", label: "Add contrast" },
-  { id: "outline", label: "Add outline" },
-  { id: "shadow", label: "Drop shadow" },
-  { id: "highlight", label: "Add highlight" },
-  { id: "cozy", label: "Make cozy" },
-  { id: "clean", label: "Clean pixels" },
-  { id: "reduceColors", label: "Reduce colors" },
-];
 
 export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -124,10 +82,6 @@ export const EditorWorkspace = () => {
   const zoom = useAppStore((state) => state.zoom);
   const brushSize = useAppStore((state) => state.brushSize);
   const brushShape = useAppStore((state) => state.brushShape);
-  const stampKind = useAppStore((state) => state.stampKind);
-  const stampPrimaryColor = useAppStore((state) => state.stampPrimaryColor);
-  const stampAccentColor = useAppStore((state) => state.stampAccentColor);
-  const cozyBrushKind = useAppStore((state) => state.cozyBrushKind);
   const pixelPerfect = useAppStore((state) => state.pixelPerfect);
   const brushStabilizer = useAppStore((state) => state.brushStabilizer);
   const mirrorX = useAppStore((state) => state.mirrorX);
@@ -277,7 +231,7 @@ export const EditorWorkspace = () => {
       cancelPendingTouch();
       startStroke(start);
     }
-    if (["pencil", "eraser", "shadow", "spray", "dither", "magicInk", "stamp", "cozy", "ramp", "replace", "lighten", "darken", "lasso"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
+    if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken", "lasso"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -477,53 +431,6 @@ export const EditorWorkspace = () => {
             <button className="template-random" onClick={() => useAppStore.getState().addTemplateAsset(playfulTemplates[Math.floor(Math.random() * playfulTemplates.length)])}>
               Surprise
             </button>
-          </div>
-        </section>
-        <section className="panel">
-          <h2><Flower2 size={16} /> Fun Drawing Helpers</h2>
-          <p className="hint">Heart uses fixed replaceable colors. Other stamps use your active brush color so props do not all turn pink.</p>
-          <label className="compact-label">
-            Shape stamp
-            <select value={stampKind} onChange={(event) => { useAppStore.getState().setStampKind(event.target.value as StampKind); useAppStore.getState().setTool("stamp"); }}>
-              {stamps.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-            </select>
-          </label>
-          <div className="stamp-color-row" aria-label="Heart stamp colors">
-            <label>
-              Main
-              <input type="color" value={stampPrimaryColor} onChange={(event) => useAppStore.getState().setStampPrimaryColor(event.target.value)} />
-            </label>
-            <label>
-              Accent
-              <input type="color" value={stampAccentColor} onChange={(event) => useAppStore.getState().setStampAccentColor(event.target.value)} />
-            </label>
-            <button onClick={() => { useAppStore.getState().setStampPrimaryColor("#f43f5e"); useAppStore.getState().setStampAccentColor("#fecdd3"); }}>
-              Heart colors
-            </button>
-          </div>
-          <div className="stamp-grid">
-            {stamps.slice(0, 10).map((entry) => (
-              <button key={entry.id} className={stampKind === entry.id ? "active" : ""} onClick={() => { useAppStore.getState().setStampKind(entry.id); useAppStore.getState().setTool("stamp"); }}>{entry.label}</button>
-            ))}
-          </div>
-          <label className="compact-label">
-            Cozy brush
-            <select value={cozyBrushKind} onChange={(event) => { useAppStore.getState().setCozyBrushKind(event.target.value as CozyBrushKind); useAppStore.getState().setTool("cozy"); }}>
-              {cozyBrushes.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-            </select>
-          </label>
-          <div className="button-row">
-            <button onClick={() => useAppStore.getState().setTool("magicInk")}>Magic Ink</button>
-            <button onClick={() => useAppStore.getState().setTool("ramp")}>Ramp Brush</button>
-          </div>
-        </section>
-        <section className="panel">
-          <h2><WandSparkles size={16} /> Beginner Fix Buttons</h2>
-          <p className="hint">Select art first, or let easyPIX use the visible pixels on this layer.</p>
-          <div className="effect-grid">
-            {drawingEffects.map((entry) => (
-              <button key={entry.id} onClick={() => useAppStore.getState().applyDrawingEffect(entry.id)}>{entry.label}</button>
-            ))}
           </div>
         </section>
         <section className="panel">

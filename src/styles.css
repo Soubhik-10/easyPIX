@@ -2165,53 +2165,6 @@ button.active,
   justify-content: flex-start;
 }
 
-.stamp-grid,
-.effect-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  margin-top: 8px;
-}
-
-.stamp-grid button,
-.effect-grid button {
-  justify-content: flex-start;
-  min-width: 0;
-  padding: 0 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stamp-color-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: end;
-  margin-top: 10px;
-}
-
-.stamp-color-row label {
-  display: grid;
-  gap: 5px;
-  color: var(--app-muted);
-  font-size: 12px;
-  min-width: 0;
-}
-
-.stamp-color-row input[type="color"] {
-  width: 100%;
-  min-width: 0;
-  height: 36px;
-  padding: 3px;
-}
-
-.stamp-color-row button {
-  height: 36px;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
 .compact-label {
   display: grid;
   gap: 6px;
