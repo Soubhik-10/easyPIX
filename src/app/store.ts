@@ -67,6 +67,7 @@ type AppState = {
   fps: number;
   strokeStart: { x: number; y: number } | null;
   strokeLast: { x: number; y: number } | null;
+  lassoMoveActive: boolean;
   lassoPoints: { x: number; y: number }[];
   strokeHistoryBase: PixelProject | null;
   refreshProjects: () => Promise<void>;
@@ -246,6 +247,9 @@ const lassoBounds = (points: { x: number; y: number }[]): Selection => {
   return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 };
 
+const selectionContains = (selection: Selection, x: number, y: number) =>
+  Boolean(selection && x >= selection.x && y >= selection.y && x < selection.x + selection.width && y < selection.y + selection.height);
+
 const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   const points: { x: number; y: number }[] = [];
   let dx = Math.abs(x1 - x0);
@@ -424,6 +428,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fps: 8,
   strokeStart: null,
   strokeLast: null,
+  lassoMoveActive: false,
   lassoPoints: [],
   strokeHistoryBase: null,
 
@@ -497,11 +502,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelection: (selection) => set({ selection }),
   beginStroke: (x, y) => {
     const state = get();
+    const lassoMoveActive = state.tool === "lasso" && selectionContains(state.selection, x, y);
     set({
       strokeStart: { x, y },
       strokeLast: { x, y },
-      lassoPoints: state.tool === "lasso" ? [{ x, y }] : [],
-      strokeHistoryBase: state.project && mutatingPointerTools.includes(state.tool) ? state.project : null,
+      lassoMoveActive,
+      lassoPoints: state.tool === "lasso" && !lassoMoveActive ? [{ x, y }] : [],
+      strokeHistoryBase: state.project && (mutatingPointerTools.includes(state.tool) || lassoMoveActive) ? state.project : null,
     });
   },
   applyToolAt: (x, y) => {
@@ -524,6 +531,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     if (state.tool === "lasso") {
+      if (state.lassoMoveActive) {
+        if (state.strokeLast) get().moveSelection(x - state.strokeLast.x, y - state.strokeLast.y);
+        set({ strokeLast: { x, y } });
+        return;
+      }
       const points = [...state.lassoPoints, { x, y }];
       set({ lassoPoints: points, selection: lassoBounds(points) });
       return;
@@ -568,25 +580,29 @@ export const useAppStore = create<AppState>((set, get) => ({
     const asset = activeAsset(state);
     const layer = activeLayer(state);
     const start = state.strokeStart;
-    if (!asset || !layer || !start) return set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+    if (!asset || !layer || !start) return set({ strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
     if (state.tool === "select") {
       const left = Math.min(start.x, x);
       const top = Math.min(start.y, y);
-      set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 }, strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+      set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 }, strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
       return;
     }
     if (state.tool === "lasso") {
+      if (state.lassoMoveActive) {
+        set({ lassoMoveActive: false, lassoPoints: [], strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+        return;
+      }
       const points = [...state.lassoPoints, { x, y }];
-      set({ selection: lassoBounds(points), lassoPoints: [], strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+      set({ selection: lassoBounds(points), lassoPoints: [], strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
       return;
     }
     if (state.tool === "move") {
       if (state.selection) get().moveSelection(x - start.x, y - start.y);
-      set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+      set({ strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
       return;
     }
     const drawTools = ["line", "rect", "ellipse"];
-    if (!drawTools.includes(state.tool)) return set({ strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+    if (!drawTools.includes(state.tool)) return set({ strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
     set({
       ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
@@ -604,6 +620,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       state.strokeHistoryBase),
       strokeStart: null,
       strokeLast: null,
+      lassoMoveActive: false,
       strokeHistoryBase: null,
     });
   },
@@ -955,6 +972,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       future: [state.project, ...state.future],
       strokeStart: null,
       strokeLast: null,
+      lassoMoveActive: false,
       strokeHistoryBase: null,
       saveStatus: "idle",
       saveError: null,
@@ -971,6 +989,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       history: [state.project, ...state.history],
       strokeStart: null,
       strokeLast: null,
+      lassoMoveActive: false,
       strokeHistoryBase: null,
       saveStatus: "idle",
       saveError: null,
