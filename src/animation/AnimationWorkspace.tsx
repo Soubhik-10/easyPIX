@@ -232,16 +232,18 @@ export const AnimationWorkspace = () => {
               useAppStore.getState().setActiveFrame(frame.id);
             }}
           >
-            <FrameThumb asset={asset} frameId={frame.id} active={index === frameIndex} />
+            <span className="frame-thumb-wrap"><FrameThumb asset={asset} frameId={frame.id} active={index === frameIndex} /></span>
             <span className="frame-name">{index + 1}. {frame.name}</span>
             <label className="frame-duration" onClick={(event) => event.stopPropagation()} title="Frame duration in milliseconds">
               <input type="number" min="40" value={frame.durationMs} onChange={(event) => useAppStore.getState().setFrameDuration(frame.id, Number(event.target.value))} />
               <span>ms</span>
             </label>
-            <Edit3 size={14} onClick={(event) => { event.stopPropagation(); drawFrame(frame.id); }} />
-            <ArrowLeft size={14} onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveFrame(frame.id, -1); }} />
-            <ArrowRight size={14} onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveFrame(frame.id, 1); }} />
-            <Trash2 size={14} onClick={(event) => { event.stopPropagation(); useAppStore.getState().removeFrame(frame.id); }} />
+            <span className="frame-actions">
+              <span role="button" tabIndex={0} title="Edit frame" onClick={(event) => { event.stopPropagation(); drawFrame(frame.id); }}><Edit3 size={14} /></span>
+              <span role="button" tabIndex={0} title="Move frame left" onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveFrame(frame.id, -1); }}><ArrowLeft size={14} /></span>
+              <span role="button" tabIndex={0} title="Move frame right" onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveFrame(frame.id, 1); }}><ArrowRight size={14} /></span>
+              <span role="button" tabIndex={0} title="Delete frame" onClick={(event) => { event.stopPropagation(); useAppStore.getState().removeFrame(frame.id); }}><Trash2 size={14} /></span>
+            </span>
           </button>
         ))}
       </footer>

@@ -566,14 +566,20 @@ textarea {
 
 .animation-layout {
   display: grid;
-  grid-template-columns: 260px 280px 1fr;
-  grid-template-rows: 1fr 148px;
+  grid-template-columns: 250px 280px minmax(420px, 1fr);
+  grid-template-rows: minmax(0, 1fr) 136px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .animation-preview {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
   background: #dfe5dc;
 }
 
@@ -581,18 +587,23 @@ textarea {
   grid-column: 1 / -1;
   display: flex;
   gap: 10px;
+  min-height: 0;
   padding: 12px;
   border-top: 1px solid #cbd5cb;
   overflow-x: auto;
+  overflow-y: hidden;
   background: #f5f7f4;
 }
 
 .frame-cell {
   display: grid;
-  grid-template-columns: 52px minmax(88px, 1fr) 86px repeat(4, 18px);
+  grid-template-columns: 48px minmax(86px, 1fr) 78px 104px;
   align-items: center;
+  gap: 8px;
   min-width: 310px;
+  height: 108px;
   padding: 8px;
+  overflow: hidden;
 }
 
 .frame-cell input {
@@ -604,6 +615,8 @@ textarea {
 .professional-animation .frame-source-panel {
   border-left: 0;
   border-right: 1px solid var(--app-border);
+  min-height: 0;
+  overflow: auto;
 }
 
 .animation-preview-header {
@@ -634,6 +647,7 @@ textarea {
   display: grid;
   gap: 8px;
   margin-top: 10px;
+  max-height: calc(100vh - 270px);
   overflow: auto;
 }
 
@@ -680,9 +694,43 @@ textarea {
   object-fit: contain;
 }
 
+.frame-thumb-wrap {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+}
+
 .frame-thumb.active {
   border-color: var(--app-accent);
   box-shadow: 0 0 0 2px var(--app-accent-soft);
+}
+
+.frame-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 22px);
+  gap: 4px;
+  justify-content: end;
+  align-items: center;
+}
+
+.frame-actions [role="button"] {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 28px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  color: var(--app-text);
+  background: var(--app-surface);
+}
+
+.frame-actions [role="button"]:hover,
+.frame-actions [role="button"]:focus-visible {
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+  outline: none;
 }
 
 .tileset-layout,
@@ -2274,7 +2322,7 @@ button.active,
 }
 
 .frame-cell {
-  grid-template-columns: 52px minmax(88px, 1fr) 92px repeat(4, 18px);
+  grid-template-columns: 48px minmax(86px, 1fr) 78px 104px;
   align-items: center;
 }
 
