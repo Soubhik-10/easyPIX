@@ -23,8 +23,10 @@ import {
   MousePointer2,
   PaintBucket,
   Palette as PaletteIcon,
+  PanelBottom,
   PenLine,
   Pipette,
+  Search,
   RotateCw,
   Scissors,
   Square,
@@ -67,7 +69,11 @@ const playfulTemplates: TemplateKind[] = ["grass", "flower", "water", "path", "t
 
 export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasScrollRef = useRef<HTMLDivElement | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
+  const activePointers = useRef(new Map<number, { x: number; y: number }>());
+  const pendingTouch = useRef<{ id: number; x: number; y: number; point: { x: number; y: number }; tool: ToolId; timer: number } | null>(null);
+  const pinchState = useRef<{ distance: number; zoom: number; scrollLeft: number; scrollTop: number; centerX: number; centerY: number } | null>(null);
   const project = useAppStore((state) => state.project)!;
   const activeAssetId = useAppStore((state) => state.activeAssetId);
   const activeLayerId = useAppStore((state) => state.activeLayerId);
@@ -95,6 +101,11 @@ export const EditorWorkspace = () => {
   const [swapFrom, setSwapFrom] = useState(color);
   const [swapTo, setSwapTo] = useState(customColor);
   const [paletteExportText, setPaletteExportText] = useState("");
+  const [mobileMode, setMobileMode] = useState(() => window.matchMedia("(max-width: 760px)").matches);
+  const [precisionMode, setPrecisionMode] = useState(true);
+  const [panMode, setPanMode] = useState(false);
+  const [mobileNudgeLarge, setMobileNudgeLarge] = useState(false);
+  const [precisionCursor, setPrecisionCursor] = useState<{ x: number; y: number; px: number; py: number } | null>(null);
   const asset = project.assets.find((entry) => entry.id === activeAssetId) ?? project.assets[0];
   const palette = project.palettes.find((entry) => entry.id === asset.paletteId) ?? project.palettes[0];
   const activeLayer = asset.layers.find((layer) => layer.id === activeLayerId) ?? asset.layers[0];
@@ -105,33 +116,136 @@ export const EditorWorkspace = () => {
     if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, frameId: activeFrameId });
   }, [asset, zoom, showGrid, selection, activeFrameId]);
 
-  const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
+  const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>, options: { precision?: boolean } = {}) => {
     const rect = event.currentTarget.getBoundingClientRect();
+    const clientY = options.precision && event.pointerType === "touch" ? event.clientY - 44 : event.clientY;
     return {
       x: Math.floor((event.clientX - rect.left) / zoom),
-      y: Math.floor((event.clientY - rect.top) / zoom),
+      y: Math.floor((clientY - rect.top) / zoom),
     };
   };
 
-  const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = pixelFromEvent(event);
+  const precisionCursorFromEvent = (event: PointerEvent<HTMLCanvasElement>, point: { x: number; y: number }) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return {
+      x: point.x,
+      y: point.y,
+      px: rect.left + point.x * zoom + zoom / 2,
+      py: rect.top + point.y * zoom + zoom / 2,
+    };
+  };
+
+  const startStroke = (point: { x: number; y: number }) => {
     useAppStore.getState().beginStroke(point.x, point.y);
     useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
-  const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (event.buttons !== 1) return;
+  const cancelPendingTouch = () => {
+    if (!pendingTouch.current) return;
+    window.clearTimeout(pendingTouch.current.timer);
+    pendingTouch.current = null;
+  };
+
+  const pointerDistance = () => {
+    const points = [...activePointers.current.values()];
+    if (points.length < 2) return 0;
+    return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+  };
+
+  const pointerCenter = () => {
+    const points = [...activePointers.current.values()];
+    if (points.length < 2) return { x: 0, y: 0 };
+    return { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+  };
+
+  const nudgeAmount = mobileNudgeLarge ? 8 : 1;
+
+  const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
-    const point = pixelFromEvent(event);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (event.pointerType === "touch" && activePointers.current.size >= 2) {
+      cancelPendingTouch();
+      pinchState.current = {
+        distance: pointerDistance(),
+        zoom,
+        scrollLeft: canvasScrollRef.current?.scrollLeft ?? 0,
+        scrollTop: canvasScrollRef.current?.scrollTop ?? 0,
+        centerX: pointerCenter().x,
+        centerY: pointerCenter().y,
+      };
+      return;
+    }
+    if (panMode && event.pointerType === "touch") return;
+    const point = pixelFromEvent(event, { precision: mobileMode && precisionMode });
+    if (event.pointerType === "touch") setPrecisionCursor(precisionCursorFromEvent(event, point));
+    if (event.pointerType === "touch" && mobileMode) {
+      const toolAtStart = tool;
+      pendingTouch.current = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        point,
+        tool: toolAtStart,
+        timer: window.setTimeout(() => {
+          if (!pendingTouch.current || pendingTouch.current.id !== event.pointerId) return;
+          useAppStore.getState().setTool("picker");
+          useAppStore.getState().applyToolAt(point.x, point.y);
+          useAppStore.getState().setTool(toolAtStart);
+          pendingTouch.current = null;
+        }, 480),
+      };
+      return;
+    }
+    startStroke(point);
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const previousPointer = activePointers.current.get(event.pointerId);
+    activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (event.pointerType === "touch" && activePointers.current.size >= 2 && pinchState.current) {
+      const nextDistance = pointerDistance();
+      const center = pointerCenter();
+      if (nextDistance > 0 && pinchState.current.distance > 0) {
+        useAppStore.getState().setZoom(Math.max(4, Math.min(80, Math.round(pinchState.current.zoom * (nextDistance / pinchState.current.distance)))));
+      }
+      if (canvasScrollRef.current) {
+        canvasScrollRef.current.scrollLeft = pinchState.current.scrollLeft - (center.x - pinchState.current.centerX);
+        canvasScrollRef.current.scrollTop = pinchState.current.scrollTop - (center.y - pinchState.current.centerY);
+      }
+      return;
+    }
+    if (panMode && event.pointerType === "touch" && previousPointer && canvasScrollRef.current) {
+      canvasScrollRef.current.scrollLeft -= event.clientX - previousPointer.x;
+      canvasScrollRef.current.scrollTop -= event.clientY - previousPointer.y;
+      return;
+    }
+    if (event.buttons !== 1) return;
+    const point = pixelFromEvent(event, { precision: mobileMode && precisionMode });
+    if (event.pointerType === "touch") setPrecisionCursor(precisionCursorFromEvent(event, point));
+    if (pendingTouch.current && pendingTouch.current.id === event.pointerId) {
+      const moved = Math.hypot(event.clientX - pendingTouch.current.x, event.clientY - pendingTouch.current.y);
+      if (moved < 7) return;
+      const start = pendingTouch.current.point;
+      cancelPendingTouch();
+      startStroke(start);
+    }
     if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken", "lasso"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
-    const point = pixelFromEvent(event);
+    const pending = pendingTouch.current;
+    if (pending && pending.id === event.pointerId) {
+      cancelPendingTouch();
+      startStroke(pending.point);
+    }
+    const point = pixelFromEvent(event, { precision: mobileMode && precisionMode });
     useAppStore.getState().endStroke(point.x, point.y);
+    activePointers.current.delete(event.pointerId);
+    if (activePointers.current.size < 2) pinchState.current = null;
+    if (event.pointerType === "touch") window.setTimeout(() => setPrecisionCursor(null), 280);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
@@ -144,7 +258,7 @@ export const EditorWorkspace = () => {
   };
 
   return (
-    <section className="workspace editor-layout detailed-tools">
+    <section className={mobileMode ? "workspace editor-layout detailed-tools mobile-editor-mode" : "workspace editor-layout detailed-tools"}>
       <aside className="tool-rail" data-label-mode="detailed">
         {tools.map((entry) => {
           const Icon = entry.icon;
@@ -245,7 +359,7 @@ export const EditorWorkspace = () => {
             <RotateCw size={16} />
           </button>
         </div>
-        <div className="canvas-scroll">
+        <div className="canvas-scroll" ref={canvasScrollRef}>
           <canvas
             ref={canvasRef}
             className="pixel-canvas"
@@ -255,6 +369,12 @@ export const EditorWorkspace = () => {
             onPointerCancel={onPointerUp}
             onContextMenu={(event) => event.preventDefault()}
           />
+          {precisionCursor && mobileMode && precisionMode ? (
+            <div className="precision-cursor" style={{ left: precisionCursor.px, top: precisionCursor.py }}>
+              <span />
+              <strong>{precisionCursor.x}, {precisionCursor.y}</strong>
+            </div>
+          ) : null}
         </div>
         <div className="actual-preview">
           <span>Actual size</span>
@@ -427,6 +547,29 @@ export const EditorWorkspace = () => {
           </div>
         </section>
       </aside>
+      <nav className="mobile-editor-bar" aria-label="Mobile editor controls">
+        <button className={mobileMode ? "active" : ""} onClick={() => setMobileMode(!mobileMode)} title="Mobile drawing layout">
+          <PanelBottom size={17} /> Mobile
+        </button>
+        <button className={precisionMode ? "active" : ""} onClick={() => setPrecisionMode(!precisionMode)} title="Offset precision cursor">
+          <Search size={17} /> Precision
+        </button>
+        <button className={panMode ? "active" : ""} onClick={() => setPanMode(!panMode)} title="One-finger pan mode">
+          <Move size={17} /> Pan
+        </button>
+        <button onClick={() => useAppStore.getState().setZoom(8)}>8x</button>
+        <button onClick={() => useAppStore.getState().setZoom(16)}>16x</button>
+        <button onClick={() => useAppStore.getState().setZoom(32)}>32x</button>
+        <button onClick={() => useAppStore.getState().undo()}>Undo</button>
+        <button onClick={() => useAppStore.getState().redo()}>Redo</button>
+        <div className="mobile-nudge-pad">
+          <button onClick={() => useAppStore.getState().moveSelection(0, -nudgeAmount)} disabled={!selection}><ArrowUp size={15} /></button>
+          <button onClick={() => useAppStore.getState().moveSelection(-nudgeAmount, 0)} disabled={!selection}><ArrowLeft size={15} /></button>
+          <button className={mobileNudgeLarge ? "active" : ""} onClick={() => setMobileNudgeLarge(!mobileNudgeLarge)}>{mobileNudgeLarge ? "8px" : "1px"}</button>
+          <button onClick={() => useAppStore.getState().moveSelection(nudgeAmount, 0)} disabled={!selection}><ArrowRight size={15} /></button>
+          <button onClick={() => useAppStore.getState().moveSelection(0, nudgeAmount)} disabled={!selection}><ArrowDown size={15} /></button>
+        </div>
+      </nav>
     </section>
   );
 };

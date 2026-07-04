@@ -7,6 +7,11 @@ const manualSections = [
     body: "Use Pencil, Eraser, Fill, Picker, shape tools, spray, dither, lighten, darken, shadow helper, Magic Wand, Lasso, and Move. Select artwork grabs the visible drawing so you can nudge it into place.",
   },
   {
+    icon: Image,
+    title: "Mobile",
+    body: "Use the bottom mobile bar for precision cursor, pan mode, zoom presets, undo/redo, and selection nudging. Long-press the canvas to pick a color, and use two fingers to pinch zoom and pan.",
+  },
+  {
     icon: Layers,
     title: "Layers",
     body: "Keep sketch, color, highlight, and shadow on separate layers. Hide layers to compare ideas, lower opacity for guides, duplicate before risky edits, and merge only when you are happy.",

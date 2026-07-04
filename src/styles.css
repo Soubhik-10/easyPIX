@@ -2082,6 +2082,45 @@ button.active,
   grid-template-columns: 172px 1fr 320px;
 }
 
+.mobile-editor-bar {
+  display: none;
+}
+
+.precision-cursor {
+  position: fixed;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  pointer-events: none;
+}
+
+.precision-cursor span {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--app-accent);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px var(--app-surface),
+    0 8px 20px rgba(15, 23, 42, 0.28);
+}
+
+.precision-cursor strong {
+  position: absolute;
+  top: -28px;
+  min-width: 48px;
+  padding: 2px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .tool-rail .icon-button span {
   display: none;
 }
@@ -2593,6 +2632,130 @@ button.active,
   .tool-rail[data-label-mode="detailed"] .icon-button {
     width: auto;
     min-width: 132px;
+  }
+}
+
+@media (max-width: 760px) {
+  .editor-layout.detailed-tools,
+  .editor-layout.detailed-tools.mobile-editor-mode {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding-bottom: 122px;
+  }
+
+  .mobile-editor-mode .tool-rail {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-border);
+    overflow-x: auto;
+    background: var(--app-surface);
+  }
+
+  .mobile-editor-mode .tool-rail[data-label-mode="detailed"] .icon-button {
+    min-width: 94px;
+    min-height: 42px;
+    padding: 0 9px;
+  }
+
+  .mobile-editor-mode .canvas-stage {
+    min-height: 58vh;
+  }
+
+  .mobile-editor-mode .stage-toolbar {
+    max-height: 136px;
+    overflow: auto;
+    padding: 8px;
+  }
+
+  .mobile-editor-mode .stage-toolbar button,
+  .mobile-editor-mode .stage-toolbar select,
+  .mobile-editor-mode .stage-toolbar input {
+    min-height: 38px;
+  }
+
+  .mobile-editor-mode .canvas-scroll {
+    padding: 16px 16px 120px;
+    touch-action: none;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-editor-mode .inspector {
+    max-height: 42vh;
+    border-left: 0;
+    border-top: 1px solid var(--app-border);
+  }
+
+  .mobile-editor-mode .actual-preview {
+    display: none;
+  }
+
+  .editor-layout.detailed-tools .mobile-editor-bar {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--app-surface) 94%, transparent);
+    box-shadow: var(--app-shadow);
+    overflow-x: auto;
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-editor-bar button {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+
+  .mobile-nudge-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 38px);
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+
+  .mobile-nudge-pad button {
+    min-height: 38px;
+    padding: 0;
+  }
+
+  .mobile-nudge-pad button:first-child {
+    grid-column: 2;
+  }
+
+  .mobile-nudge-pad button:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .mobile-nudge-pad button:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 12px;
+  }
+
+  .mobile-nudge-pad button:nth-child(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .mobile-nudge-pad button:nth-child(5) {
+    grid-column: 2;
+    grid-row: 3;
   }
 }
 
