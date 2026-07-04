@@ -598,17 +598,21 @@ export const EditorWorkspace = () => {
           <div className="layer-list">
             {[...asset.layers].reverse().map((layer) => (
               <div key={layer.id} className={layer.id === activeLayer.id ? "active layer-row" : "layer-row"} onClick={() => useAppStore.setState({ activeLayerId: layer.id })}>
-                <button title="Toggle visibility" onClick={(event) => { event.stopPropagation(); useAppStore.getState().updateLayer(layer.id, { visible: !layer.visible }); }}>
-                  {layer.visible ? <Eye size={15} /> : <EyeOff size={15} />}
-                </button>
-                <input value={layer.name} onChange={(event) => useAppStore.getState().updateLayer(layer.id, { name: event.target.value })} />
-                <input className="range-fill" style={rangeStyle(layer.opacity, 0, 1)} type="range" min="0" max="1" step="0.05" value={layer.opacity} onChange={(event) => useAppStore.getState().updateLayer(layer.id, { opacity: Number(event.target.value) })} />
-                <button title="Lock layer" onClick={() => useAppStore.getState().updateLayer(layer.id, { locked: !layer.locked })}>{layer.locked ? <Lock size={15} /> : <Unlock size={15} />}</button>
-                <button title="Move layer up" onClick={() => useAppStore.getState().moveLayer(layer.id, 1)}><ArrowUp size={15} /></button>
-                <button title="Move layer down" onClick={() => useAppStore.getState().moveLayer(layer.id, -1)}><ArrowDown size={15} /></button>
-                <button title="Duplicate layer" onClick={() => useAppStore.getState().duplicateLayer(layer.id)}><Copy size={15} /></button>
-                <button title="Merge down" onClick={() => useAppStore.getState().mergeLayerDown(layer.id)}>Merge</button>
-                <button title="Delete layer" onClick={() => useAppStore.getState().removeLayer(layer.id)}><Trash2 size={15} /></button>
+                <div className="layer-main">
+                  <button title="Toggle visibility" onClick={(event) => { event.stopPropagation(); useAppStore.getState().updateLayer(layer.id, { visible: !layer.visible }); }}>
+                    {layer.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+                  </button>
+                  <input value={layer.name} onChange={(event) => useAppStore.getState().updateLayer(layer.id, { name: event.target.value })} />
+                  <input className="range-fill" style={rangeStyle(layer.opacity, 0, 1)} type="range" min="0" max="1" step="0.05" value={layer.opacity} onChange={(event) => useAppStore.getState().updateLayer(layer.id, { opacity: Number(event.target.value) })} />
+                </div>
+                <div className="layer-actions">
+                  <button title="Lock layer" onClick={(event) => { event.stopPropagation(); useAppStore.getState().updateLayer(layer.id, { locked: !layer.locked }); }}>{layer.locked ? <Lock size={15} /> : <Unlock size={15} />}</button>
+                  <button title="Move layer up" onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveLayer(layer.id, 1); }}><ArrowUp size={15} /></button>
+                  <button title="Move layer down" onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveLayer(layer.id, -1); }}><ArrowDown size={15} /></button>
+                  <button title="Duplicate layer" onClick={(event) => { event.stopPropagation(); useAppStore.getState().duplicateLayer(layer.id); }}><Copy size={15} /></button>
+                  <button title="Merge down" onClick={(event) => { event.stopPropagation(); useAppStore.getState().mergeLayerDown(layer.id); }}>Merge</button>
+                  <button title="Delete layer" onClick={(event) => { event.stopPropagation(); useAppStore.getState().removeLayer(layer.id); }}><Trash2 size={15} /></button>
+                </div>
               </div>
             ))}
           </div>

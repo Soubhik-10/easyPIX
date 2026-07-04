@@ -539,12 +539,33 @@ canvas {
 
 .layer-row {
   display: grid;
-  grid-template-columns: 28px minmax(70px, 1fr) 68px repeat(5, 28px) auto 28px;
-  gap: 6px;
-  align-items: center;
+  gap: 8px;
+  min-width: 0;
   padding: 6px;
   border: 1px solid #d6ddd5;
   border-radius: 7px;
+  overflow: hidden;
+}
+
+.layer-main {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.layer-main input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+.layer-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
 }
 
 .button-row {
@@ -575,11 +596,21 @@ textarea {
 .layer-row button {
   min-height: 26px;
   padding: 0 5px;
+  min-width: 0;
 }
 
 .layer-row input[type="text"],
 .layer-row input:not([type]) {
   min-width: 0;
+  width: 100%;
+}
+
+.layer-actions button {
+  justify-content: center;
+  width: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .animation-layout {
