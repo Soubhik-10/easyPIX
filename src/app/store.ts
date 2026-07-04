@@ -5,24 +5,32 @@ import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLay
 import { palettePresetById } from "../palettes/presets";
 import {
   adjustColor,
+  applyBeginnerEffect,
   clearSelectionPixels,
   copySelection,
+  cozyBrush,
   ditherBrush,
   drawBrush,
   drawEllipse,
   drawLine,
   drawRect,
+  drawStamp,
   flipClipX,
   flipClipY,
   floodFill,
   magicWandSelection,
+  magicInkBrush,
   pastePixels,
   pixelPerfectPoints,
+  colorRampBrush,
   replaceColor,
   resizePixels,
   rotateClip,
   setPixel,
   sprayBrush,
+  type CozyBrushKind,
+  type PixelEffect,
+  type StampKind,
 } from "../editor/tools/pixelOps";
 
 type Clip = { width: number; height: number; pixels: string[] };
@@ -49,6 +57,8 @@ type AppState = {
   secondaryColor: string;
   brushSize: number;
   brushShape: "square" | "circle";
+  stampKind: StampKind;
+  cozyBrushKind: CozyBrushKind;
   pixelPerfect: boolean;
   brushStabilizer: number;
   mirrorX: boolean;
@@ -80,6 +90,8 @@ type AppState = {
   setColor: (color: string) => void;
   setBrushSize: (size: number) => void;
   setBrushShape: (shape: "square" | "circle") => void;
+  setStampKind: (kind: StampKind) => void;
+  setCozyBrushKind: (kind: CozyBrushKind) => void;
   togglePixelPerfect: () => void;
   setBrushStabilizer: (value: number) => void;
   toggleMirrorX: () => void;
@@ -117,6 +129,7 @@ type AppState = {
   flipSelectionX: () => void;
   flipSelectionY: () => void;
   rotateSelection: () => void;
+  applyDrawingEffect: (effect: PixelEffect) => void;
   undo: () => void;
   redo: () => void;
   addPaletteColor: (color: string) => void;
@@ -170,7 +183,7 @@ const updateActiveAsset = (project: PixelProject, assetId: string | null, recipe
 
 const activeAsset = (state: AppState) => state.project?.assets.find((asset) => asset.id === state.activeAssetId) ?? null;
 const activeLayer = (state: AppState) => activeAsset(state)?.layers.find((layer) => layer.id === state.activeLayerId) ?? null;
-const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"];
+const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "magicInk", "stamp", "cozy", "ramp", "replace", "lighten", "darken"];
 const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse", "move"];
 
 const pixelsForLayer = (asset: PixelAsset, frameId: string | null, layer: PixelLayer) => {
@@ -343,6 +356,10 @@ const paintAt = (pixels: string[], width: number, height: number, x: number, y: 
     if (state.tool === "eraser") return drawBrush(next, width, height, point.x, point.y, "transparent", state.brushSize, state.brushShape);
     if (state.tool === "spray") return sprayBrush(next, width, height, point.x, point.y, state.color, state.brushSize);
     if (state.tool === "dither") return ditherBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
+    if (state.tool === "magicInk") return magicInkBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
+    if (state.tool === "cozy") return cozyBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.cozyBrushKind);
+    if (state.tool === "ramp") return colorRampBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
+    if (state.tool === "stamp") return drawStamp(next, width, height, point.x, point.y, state.color, state.stampKind);
     if (state.tool === "replace") {
       const target = next[point.y * width + point.x];
       return target ? replaceColor(next, target, state.color) : next;
@@ -406,6 +423,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondaryColor: "transparent",
   brushSize: 1,
   brushShape: "square",
+  stampKind: "heart",
+  cozyBrushKind: "grass",
   pixelPerfect: false,
   brushStabilizer: 0,
   mirrorX: false,
@@ -488,6 +507,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setColor: (color) => set({ color }),
   setBrushSize: (brushSize) => set({ brushSize }),
   setBrushShape: (brushShape) => set({ brushShape }),
+  setStampKind: (stampKind) => set({ stampKind }),
+  setCozyBrushKind: (cozyBrushKind) => set({ cozyBrushKind }),
   togglePixelPerfect: () => set({ pixelPerfect: !get().pixelPerfect }),
   setBrushStabilizer: (brushStabilizer) => set({ brushStabilizer }),
   toggleMirrorX: () => set({ mirrorX: !get().mirrorX }),
@@ -944,6 +965,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),
   flipSelectionY: () => set({ clipboard: get().clipboard ? flipClipY(get().clipboard!) : get().clipboard }),
   rotateSelection: () => set({ clipboard: get().clipboard ? rotateClip(get().clipboard!) : get().clipboard }),
+  applyDrawingEffect: (effect) => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked) return;
+    const selection = state.selection ?? visiblePixelBounds(pixelsForLayer(asset, state.activeFrameId, layer), asset.width, asset.height);
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(
+        entry,
+        state.activeFrameId,
+        layer.id,
+        applyBeginnerEffect(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, effect, selection),
+      ),
+    }))));
+  },
   undo: () => {
     const state = get();
     const previous = state.history[0];

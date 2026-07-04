@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustColor, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, setPixel } from "./pixelOps";
+import { adjustColor, applyBeginnerEffect, autoOutlinePixels, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, drawStamp, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, setPixel } from "./pixelOps";
 import type { PixelLayer } from "../../projects/types";
 
 const blank = (width: number, height: number) => Array.from({ length: width * height }, () => "transparent");
@@ -70,5 +70,19 @@ describe("pixel operations", () => {
     const points = pixelPerfectPoints([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }]);
     expect(points[0]).toEqual({ x: 0, y: 0 });
     expect(points[points.length - 1]).toEqual({ x: 1, y: 1 });
+  });
+
+  it("adds outlines around solid pixels", () => {
+    const pixels = setPixel(blank(3, 3), 3, 3, 1, 1, "#ff0000");
+    const outlined = autoOutlinePixels(pixels, 3, 3, "#000000");
+    expect(outlined.filter((color) => color === "#000000")).toHaveLength(4);
+    expect(outlined[4]).toBe("#ff0000");
+  });
+
+  it("draws deterministic stamps and cleans lonely pixels", () => {
+    const stamped = drawStamp(blank(7, 7), 7, 7, 3, 3, "#ff0000", "heart");
+    expect(stamped.filter((color) => color === "#ff0000").length).toBeGreaterThan(4);
+    const noisy = setPixel(blank(3, 3), 3, 3, 1, 1, "#ffffff");
+    expect(applyBeginnerEffect(noisy, 3, 3, "clean")[4]).toBe("transparent");
   });
 });
