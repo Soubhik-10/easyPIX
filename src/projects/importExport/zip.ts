@@ -1,17 +1,16 @@
 import JSZip from "jszip";
 import type { PixelAsset, PixelLayer, PixelProject } from "../types";
+import { layersForFrame } from "../../editor/canvas/renderers";
 
-const compositeAssetToDataUrl = (asset: PixelAsset, layerIds?: string[], scale = 1) => {
+const compositeAssetToDataUrl = (asset: PixelAsset, layerIds?: string[], scale = 1, frameId?: string) => {
   const canvas = document.createElement("canvas");
   canvas.width = asset.width * scale;
   canvas.height = asset.height * scale;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
   ctx.scale(scale, scale);
-  const ids = layerIds ?? asset.layers.map((layer) => layer.id);
-  ids.forEach((id) => {
-    const layer = asset.layers.find((entry) => entry.id === id);
-    if (!layer || !layer.visible) return;
+  layersForFrame(asset, frameId ?? asset.frames[0]?.id, layerIds).forEach((layer) => {
+    if (!layer.visible) return;
     drawLayer(ctx, layer, asset.width, asset.height);
   });
   return canvas.toDataURL("image/png").split(",")[1];
@@ -44,6 +43,13 @@ export const validateProjectForExport = (project: PixelProject) => {
         errors.push(`${asset.name} / ${layer.name} has ${layer.pixels.length} pixels, expected ${asset.width * asset.height}.`);
       }
     });
+    asset.frames.forEach((frame) => {
+      Object.entries(frame.cels ?? {}).forEach(([layerId, pixels]) => {
+        if (pixels.length !== asset.width * asset.height) {
+          errors.push(`${asset.name} / ${frame.name} / ${layerId} has ${pixels.length} pixels, expected ${asset.width * asset.height}.`);
+        }
+      });
+    });
   });
   return errors;
 };
@@ -59,6 +65,9 @@ export const exportProjectZip = async (project: PixelProject) => {
   project.assets.forEach((asset) => {
     zip.file(`assets/${asset.id}.json`, JSON.stringify(asset, null, 2));
     zip.file(`images/${asset.id}.png`, compositeAssetToDataUrl(asset), { base64: true });
+    asset.frames.forEach((frame, index) => {
+      zip.file(`images/${asset.id}-frame-${index + 1}.png`, compositeAssetToDataUrl(asset, frame.layerIds, 1, frame.id), { base64: true });
+    });
   });
   project.tilesets.forEach((tileset) => {
     zip.file(`tilesets/${tileset.id}.json`, JSON.stringify(tileset, null, 2));
@@ -86,7 +95,7 @@ export const downloadBlob = (blob: Blob, filename: string) => {
 };
 
 export const exportAssetPng = (asset: PixelAsset, scale = 1) => {
-  const base64 = compositeAssetToDataUrl(asset, undefined, scale);
+  const base64 = compositeAssetToDataUrl(asset, undefined, scale, asset.frames[0]?.id);
   const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
   return new Blob([bytes], { type: "image/png" });
 };
@@ -103,7 +112,7 @@ export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tile
   assets.forEach((asset, index) => {
     ctx.save();
     ctx.translate((index % columns) * tileWidth, Math.floor(index / columns) * tileHeight);
-    asset.layers.forEach((layer) => {
+    layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => {
       if (layer.visible) drawLayer(ctx, layer, asset.width, asset.height);
     });
     ctx.restore();

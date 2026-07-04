@@ -1,5 +1,18 @@
 import type { PixelAsset, PixelLayer, Scene, Selection } from "../../projects/types";
 
+export const layerPixelsForFrame = (asset: PixelAsset, frameId: string | null | undefined, layer: PixelLayer) => {
+  const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
+  return frame?.cels?.[layer.id] ?? layer.pixels;
+};
+
+export const layersForFrame = (asset: PixelAsset, frameId: string | null | undefined, layerIds?: string[]) => {
+  const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
+  const ids = layerIds ?? frame?.layerIds ?? asset.layers.map((layer) => layer.id);
+  return asset.layers
+    .filter((layer) => ids.includes(layer.id))
+    .map((layer) => ({ ...layer, pixels: layerPixelsForFrame(asset, frame?.id, layer) }));
+};
+
 export const drawCheckerboard = (ctx: CanvasRenderingContext2D, width: number, height: number, scale: number) => {
   const size = Math.max(4, scale);
   for (let y = 0; y < height * scale; y += size) {
@@ -36,16 +49,14 @@ export const renderAsset = (
   canvas: HTMLCanvasElement,
   asset: PixelAsset,
   scale: number,
-  options: { grid?: boolean; selection?: Selection; activeLayerIds?: string[] } = {},
+  options: { grid?: boolean; selection?: Selection; activeLayerIds?: string[]; frameId?: string | null } = {},
 ) => {
   canvas.width = asset.width * scale;
   canvas.height = asset.height * scale;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
   drawCheckerboard(ctx, asset.width, asset.height, scale);
-  const layers = options.activeLayerIds
-    ? asset.layers.filter((layer) => options.activeLayerIds?.includes(layer.id))
-    : asset.layers;
+  const layers = layersForFrame(asset, options.frameId, options.activeLayerIds);
   layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
   if (options.grid && scale >= 8) {
     ctx.strokeStyle = "rgba(31, 41, 55, 0.16)";
@@ -83,7 +94,7 @@ export const renderRepeatPreview = (canvas: HTMLCanvasElement, asset: PixelAsset
     for (let col = 0; col < 5; col += 1) {
       ctx.save();
       ctx.translate(col * asset.width * scale, row * asset.height * scale);
-      asset.layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
+      layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
       ctx.restore();
     }
   }
@@ -100,7 +111,7 @@ export const renderTilesheet = (canvas: HTMLCanvasElement, assets: PixelAsset[],
   assets.forEach((asset, index) => {
     ctx.save();
     ctx.translate((index % columns) * tileWidth * scale, Math.floor(index / columns) * tileHeight * scale);
-    asset.layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
+    layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
     ctx.restore();
   });
 };
@@ -122,7 +133,7 @@ export const renderScene = (canvas: HTMLCanvasElement, scene: Scene, assets: Pix
       const assetScale = Math.max(1, (scene.tileSize / Math.max(asset.width, asset.height)) * scale);
       ctx.save();
       ctx.translate(x, y);
-      asset.layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, assetScale));
+      layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, assetScale));
       ctx.restore();
     });
   });

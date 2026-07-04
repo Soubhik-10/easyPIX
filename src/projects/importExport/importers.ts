@@ -98,27 +98,25 @@ export const importPiskel = async (file: File): Promise<PixelAsset> => {
   const rawLayers = Array.isArray(piskel.layers) ? piskel.layers : [];
   const parsedLayers = rawLayers.map((layer: unknown) => (typeof layer === "string" ? JSON.parse(layer) : layer));
   const frameCount = Math.max(1, ...parsedLayers.map((layer: any) => Number(layer.frameCount ?? 1)));
-  const layers: PixelLayer[] = [];
+  const layers: PixelLayer[] = parsedLayers.map((layer: any, layerIndex: number) => ({
+    ...createLayer(layer.name ?? `Layer ${layerIndex + 1}`, width, height),
+    opacity: typeof layer.opacity === "number" ? layer.opacity : 1,
+    visible: layer.hidden ? false : true,
+  }));
   const frames: PixelFrame[] = [];
   const layerFramePixels = await Promise.all(parsedLayers.map((layer: any) => piskelFramePixelsByIndex(layer, width, height)));
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-    const frameLayerIds: string[] = [];
+    const cels: Record<string, string[]> = {};
     parsedLayers.forEach((layer: any, layerIndex: number) => {
       const fallbackChunk = layer.chunks?.[0] ?? layer.frames?.[0] ?? layer;
-      const importedLayer = {
-        ...createLayer(`${layer.name ?? `Layer ${layerIndex + 1}`} F${frameIndex + 1}`, width, height),
-        pixels: layerFramePixels[layerIndex].get(frameIndex) ?? flattenPiskelLayout(fallbackChunk.layout ?? fallbackChunk.pixels ?? [], width, height),
-        opacity: typeof layer.opacity === "number" ? layer.opacity : 1,
-        visible: layer.hidden ? false : true,
-      };
-      layers.push(importedLayer);
-      frameLayerIds.push(importedLayer.id);
+      cels[layers[layerIndex].id] = layerFramePixels[layerIndex].get(frameIndex) ?? flattenPiskelLayout(fallbackChunk.layout ?? fallbackChunk.pixels ?? [], width, height);
     });
     frames.push({
       id: uid("frame"),
       name: `Frame ${frameIndex + 1}`,
       durationMs: Math.round(1000 / Number(piskel.fps ?? 8)),
-      layerIds: frameLayerIds,
+      layerIds: layers.map((layer) => layer.id),
+      cels,
     });
   }
   const safeLayers = layers.length ? layers : [createLayer("Imported", width, height)];
@@ -128,7 +126,7 @@ export const importPiskel = async (file: File): Promise<PixelAsset> => {
     width,
     height,
     layers: safeLayers,
-    frames: frames.length ? frames : [{ id: uid("frame"), name: "Frame 1", durationMs: Math.round(1000 / Number(piskel.fps ?? 8)), layerIds: safeLayers.map((layer) => layer.id) }],
+    frames: frames.length ? frames : [{ id: uid("frame"), name: "Frame 1", durationMs: Math.round(1000 / Number(piskel.fps ?? 8)), layerIds: safeLayers.map((layer) => layer.id), cels: Object.fromEntries(safeLayers.map((layer) => [layer.id, [...layer.pixels]])) }],
   };
 };
 
@@ -141,7 +139,7 @@ export const importPngAsset = async (file: File): Promise<PixelAsset> => {
     width: image.width,
     height: image.height,
     layers: [{ ...layer, pixels: image.pixels }],
-    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id] }],
+    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id], cels: { [layer.id]: image.pixels } }],
   };
 };
 
@@ -152,21 +150,19 @@ export const importAsepriteJson = async (jsonFile: File, imageFile: File): Promi
   const first: any = frameEntries[0];
   const width = Number(first.frame?.w ?? first.sourceSize?.w ?? 64);
   const height = Number(first.frame?.h ?? first.sourceSize?.h ?? 64);
-  const layers: PixelLayer[] = [];
+  const layer = createLayer("Imported Cel", width, height);
+  const layers: PixelLayer[] = [layer];
   const frames: PixelFrame[] = [];
   for (const [index, entry] of frameEntries.entries()) {
     const frame: any = (entry as any).frame ?? entry;
-    const layer = createLayer(`Frame ${index + 1}`, width, height);
-    layers.push({
-      ...layer,
-      pixels: await cropImagePixels(imageFile, Number(frame.x), Number(frame.y), Number(frame.w), Number(frame.h)),
-      visible: true,
-    });
     frames.push({
       id: uid("frame"),
       name: (entry as any).filename ?? `Frame ${index + 1}`,
       durationMs: Number((entry as any).duration ?? 160),
       layerIds: [layer.id],
+      cels: {
+        [layer.id]: await cropImagePixels(imageFile, Number(frame.x), Number(frame.y), Number(frame.w), Number(frame.h)),
+      },
     });
   }
   return {

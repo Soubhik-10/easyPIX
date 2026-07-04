@@ -72,6 +72,7 @@ export const EditorWorkspace = () => {
   const showGrid = useAppStore((state) => state.showGrid);
   const selection = useAppStore((state) => state.selection);
   const clipboard = useAppStore((state) => state.clipboard);
+  const activeFrameId = useAppStore((state) => state.activeFrameId);
   const [customColor, setCustomColor] = useState(color);
   const [assetName, setAssetName] = useState("New Asset");
   const [assetWidth, setAssetWidth] = useState(64);
@@ -90,8 +91,8 @@ export const EditorWorkspace = () => {
   const warnings = useMemo(() => (palette ? paletteWarnings(palette) : []), [palette]);
 
   useEffect(() => {
-    if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection });
-  }, [asset, zoom, showGrid, selection]);
+    if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, frameId: activeFrameId });
+  }, [asset, zoom, showGrid, selection, activeFrameId]);
 
   const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -217,7 +218,7 @@ export const EditorWorkspace = () => {
           <span>Actual size</span>
           <canvas
             ref={(node) => {
-              if (node) renderAsset(node, asset, 1, { grid: false });
+              if (node) renderAsset(node, asset, 1, { grid: false, frameId: activeFrameId });
             }}
           />
         </div>

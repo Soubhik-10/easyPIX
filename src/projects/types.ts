@@ -9,6 +9,7 @@ export type PixelFrame = {
   name: string;
   durationMs: number;
   layerIds: string[];
+  cels?: Record<string, string[]>;
 };
 
 export type PixelLayer = {

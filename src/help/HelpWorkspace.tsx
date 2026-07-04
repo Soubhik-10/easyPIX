@@ -34,7 +34,7 @@ const manualSections = [
   {
     icon: Play,
     title: "Animate",
-    body: "Add or duplicate frames, set duration in milliseconds, preview playback with FPS, and export a spritesheet. Use duplicate frame first, then make small pixel changes.",
+    body: "Add blank frames or duplicate the active frame. Each frame has real cel pixels per layer, so edits stay on the selected frame. Set duration in milliseconds, preview playback, and export a spritesheet.",
   },
   {
     icon: BookOpen,

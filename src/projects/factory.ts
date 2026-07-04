@@ -23,7 +23,7 @@ export const createAsset = (name = "Untitled Sprite", width = 64, height = 64): 
     width,
     height,
     layers: [layer],
-    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id] }],
+    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id], cels: { [layer.id]: [...layer.pixels] } }],
   };
 };
 
@@ -154,7 +154,7 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
     width: size,
     height: size,
     layers: [layer],
-    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id] }],
+    frames: [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id], cels: { [layer.id]: [...layer.pixels] } }],
   };
 };
 

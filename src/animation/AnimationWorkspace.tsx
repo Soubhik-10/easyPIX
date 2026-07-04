@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Download, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useAppStore } from "../app/store";
-import { drawPixelLayer, renderAsset } from "../editor/canvas/renderers";
+import { drawPixelLayer, layersForFrame, renderAsset } from "../editor/canvas/renderers";
 import { downloadBlob } from "../projects/importExport/zip";
 
 const rangeStyle = (value: number, min: number, max: number) =>
@@ -26,7 +26,7 @@ export const AnimationWorkspace = () => {
     asset.frames.forEach((frame, index) => {
       ctx.save();
       ctx.translate(index * asset.width, 0);
-      asset.layers.filter((layer) => frame.layerIds.includes(layer.id)).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, 1));
+      layersForFrame(asset, frame.id, frame.layerIds).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, 1));
       ctx.restore();
     });
     canvas.toBlob((blob) => {
@@ -41,8 +41,13 @@ export const AnimationWorkspace = () => {
   }, [asset.frames.length, fps, isPlaying]);
 
   useEffect(() => {
+    const index = asset.frames.findIndex((frame) => frame.id === activeFrameId);
+    if (index >= 0) setFrameIndex(index);
+  }, [activeFrameId, asset.frames]);
+
+  useEffect(() => {
     const frame = asset.frames[frameIndex] ?? asset.frames[0];
-    if (previewRef.current) renderAsset(previewRef.current, asset, 10, { grid: false, activeLayerIds: frame.layerIds });
+    if (previewRef.current) renderAsset(previewRef.current, asset, 10, { grid: false, activeLayerIds: frame.layerIds, frameId: frame.id });
   }, [asset, frameIndex]);
 
   return (

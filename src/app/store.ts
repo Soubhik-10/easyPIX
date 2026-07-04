@@ -155,6 +155,20 @@ const activeLayer = (state: AppState) => activeAsset(state)?.layers.find((layer)
 const strokeTools: ToolId[] = ["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken"];
 const mutatingPointerTools: ToolId[] = [...strokeTools, "fill", "line", "rect", "ellipse"];
 
+const pixelsForLayer = (asset: PixelAsset, frameId: string | null, layer: PixelLayer) => {
+  const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
+  return frame?.cels?.[layer.id] ?? layer.pixels;
+};
+
+const setFrameLayerPixels = (asset: PixelAsset, frameId: string | null, layerId: string, pixels: string[]) => ({
+  ...asset,
+  frames: asset.frames.map((frame, index) =>
+    frame.id === frameId || (!frameId && index === 0)
+      ? { ...frame, cels: { ...(frame.cels ?? {}), [layerId]: pixels } }
+      : frame,
+  ),
+});
+
 const restoredIds = (snapshot: PixelProject, state: AppState) => {
   const asset = snapshot.assets.find((entry) => entry.id === state.activeAssetId) ?? snapshot.assets[0] ?? null;
   const layer = asset?.layers.find((entry) => entry.id === state.activeLayerId) ?? asset?.layers[0] ?? null;
@@ -422,7 +436,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer || layer.locked) return;
     const color = state.tool === "eraser" ? "transparent" : state.color;
     if (state.tool === "picker") {
-      const picked = layer.pixels[y * asset.width + x];
+      const picked = pixelsForLayer(asset, state.activeFrameId, layer)[y * asset.width + x];
       if (picked && picked !== "transparent") set({ color: picked });
       return;
     }
@@ -435,11 +449,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
-          ...entry,
-          layers: entry.layers.map((item) =>
-            item.id === layer.id
-              ? { ...item, pixels: points.reduce((pixels, point) => paintAt(pixels, entry.width, entry.height, point.x, point.y, state), item.pixels) }
-              : item,
+          ...setFrameLayerPixels(
+            entry,
+            state.activeFrameId,
+            layer.id,
+            points.reduce((pixels, point) => paintAt(pixels, entry.width, entry.height, point.x, point.y, state), pixelsForLayer(entry, state.activeFrameId, layer)),
           ),
         })),
       state.strokeHistoryBase),
@@ -463,17 +477,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       ...withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
-          ...entry,
-          layers: entry.layers.map((item) => {
-            if (item.id !== layer.id) return item;
-            const pixels =
-              state.tool === "line"
-                ? drawLine(item.pixels, entry.width, entry.height, start.x, start.y, x, y, state.color)
-                : state.tool === "rect"
-                  ? drawRect(item.pixels, entry.width, entry.height, start.x, start.y, x, y, state.color)
-                  : drawEllipse(item.pixels, entry.width, entry.height, start.x, start.y, x, y, state.color);
-            return { ...item, pixels };
-          }),
+          ...setFrameLayerPixels(
+            entry,
+            state.activeFrameId,
+            layer.id,
+            state.tool === "line"
+              ? drawLine(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, start.x, start.y, x, y, state.color)
+              : state.tool === "rect"
+                ? drawRect(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, start.x, start.y, x, y, state.color)
+                : drawEllipse(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, start.x, start.y, x, y, state.color),
+          ),
         })),
       state.strokeHistoryBase),
       strokeStart: null,
@@ -556,12 +569,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       withProject(get(), (project) => {
         const source = project.assets.find((asset) => asset.id === id);
         if (!source) return project;
+        const layerIdMap = new Map<string, string>();
+        const layers = source.layers.map((layer) => {
+          const nextId = uid("layer");
+          layerIdMap.set(layer.id, nextId);
+          return { ...layer, id: nextId, pixels: [...layer.pixels] };
+        });
         const asset = {
           ...source,
           id: uid("asset"),
           name: `${source.name} Copy`,
-          layers: source.layers.map((layer) => ({ ...layer, id: uid("layer"), pixels: [...layer.pixels] })),
-          frames: source.frames.map((frame) => ({ ...frame, id: uid("frame") })),
+          layers,
+          frames: source.frames.map((frame) => ({
+            ...frame,
+            id: uid("frame"),
+            layerIds: frame.layerIds.map((layerId) => layerIdMap.get(layerId)).filter((layerId): layerId is string => Boolean(layerId)),
+            cels: Object.fromEntries(
+              Object.entries(frame.cels ?? {}).flatMap(([layerId, pixels]) => {
+                const nextLayerId = layerIdMap.get(layerId);
+                return nextLayerId ? [[nextLayerId, [...pixels]]] : [];
+              }),
+            ),
+          })),
         };
         setTimeout(() => set({ activeAssetId: asset.id, activeLayerId: asset.layers[0]?.id ?? null, activeFrameId: asset.frames[0]?.id ?? null }), 0);
         return {
@@ -582,6 +611,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...layer,
             pixels: resizePixels(layer.pixels, asset.width, asset.height, width, height),
           })),
+          frames: asset.frames.map((frame) => ({
+            ...frame,
+            cels: Object.fromEntries(
+              Object.entries(frame.cels ?? {}).map(([layerId, pixels]) => [layerId, resizePixels(pixels, asset.width, asset.height, width, height)]),
+            ),
+          })),
         })),
       ),
     ),
@@ -592,7 +627,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         updateActiveAsset(project, get().activeAssetId, (asset) => {
           const layer = createLayer(`Layer ${asset.layers.length + 1}`, asset.width, asset.height);
           setTimeout(() => set({ activeLayerId: layer.id }), 0);
-          return { ...asset, layers: [...asset.layers, layer] };
+          return {
+            ...asset,
+            layers: [...asset.layers, layer],
+            frames: asset.frames.map((frame) => ({
+              ...frame,
+              layerIds: [...new Set([...frame.layerIds, layer.id])],
+              cels: { ...(frame.cels ?? {}), [layer.id]: [...layer.pixels] },
+            })),
+          };
         }),
       ),
     ),
@@ -605,7 +648,14 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (asset.layers.length <= 1) return asset;
           const layers = asset.layers.filter((layer) => layer.id !== id);
           setTimeout(() => set({ activeLayerId: layers[0]?.id ?? null }), 0);
-          return { ...asset, layers };
+          return {
+            ...asset,
+            layers,
+            frames: asset.frames.map((frame) => {
+              const { [id]: _removed, ...cels } = frame.cels ?? {};
+              return { ...frame, layerIds: frame.layerIds.filter((layerId) => layerId !== id), cels };
+            }),
+          };
         }),
       ),
     ),
@@ -620,7 +670,21 @@ export const useAppStore = create<AppState>((set, get) => ({
           const pixels = bottom.pixels.map((color, pixelIndex) => (top.pixels[pixelIndex] !== "transparent" ? top.pixels[pixelIndex] : color));
           const layers = [...asset.layers];
           layers.splice(index - 1, 2, { ...bottom, pixels, name: `${bottom.name} + ${top.name}` });
-          return { ...asset, layers };
+          return {
+            ...asset,
+            layers,
+            frames: asset.frames.map((frame) => {
+              const topPixels = frame.cels?.[top.id] ?? top.pixels;
+              const bottomPixels = frame.cels?.[bottom.id] ?? bottom.pixels;
+              const merged = bottomPixels.map((color, pixelIndex) => (topPixels[pixelIndex] !== "transparent" ? topPixels[pixelIndex] : color));
+              const { [top.id]: _removed, ...cels } = frame.cels ?? {};
+              return {
+                ...frame,
+                layerIds: frame.layerIds.filter((layerId) => layerId !== top.id),
+                cels: { ...cels, [bottom.id]: merged },
+              };
+            }),
+          };
         }),
       ),
     ),
@@ -632,7 +696,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (!source) return asset;
           const layer = { ...source, id: uid("layer"), name: `${source.name} Copy`, pixels: [...source.pixels] };
           setTimeout(() => set({ activeLayerId: layer.id }), 0);
-          return { ...asset, layers: [...asset.layers, layer] };
+          return {
+            ...asset,
+            layers: [...asset.layers, layer],
+            frames: asset.frames.map((frame) => ({
+              ...frame,
+              layerIds: [...new Set([...frame.layerIds, layer.id])],
+              cels: { ...(frame.cels ?? {}), [layer.id]: [...(frame.cels?.[source.id] ?? source.pixels)] },
+            })),
+          };
         }),
       ),
     ),
@@ -654,7 +726,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const asset = activeAsset(state);
     const layer = activeLayer(state);
     if (!asset || !layer || !state.selection) return;
-    set({ clipboard: copySelection(layer, asset.width, state.selection) });
+    set({ clipboard: copySelection({ ...layer, pixels: pixelsForLayer(asset, state.activeFrameId, layer) }, asset.width, state.selection) });
   },
   cut: () => {
     get().copy();
@@ -665,15 +737,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(
       withProject(state, (project) =>
         updateActiveAsset(project, state.activeAssetId, (entry) => ({
-          ...entry,
-          layers: entry.layers.map((item) => {
-            if (item.id !== layer.id) return item;
-            const pixels = [...item.pixels];
-            for (let yy = 0; yy < state.selection!.height; yy += 1) {
-              for (let xx = 0; xx < state.selection!.width; xx += 1) pixels[(state.selection!.y + yy) * entry.width + state.selection!.x + xx] = "transparent";
-            }
-            return { ...item, pixels };
-          }),
+          ...setFrameLayerPixels(
+            entry,
+            state.activeFrameId,
+            layer.id,
+            (() => {
+              const pixels = [...pixelsForLayer(entry, state.activeFrameId, layer)];
+              for (let yy = 0; yy < state.selection!.height; yy += 1) {
+                for (let xx = 0; xx < state.selection!.width; xx += 1) pixels[(state.selection!.y + yy) * entry.width + state.selection!.x + xx] = "transparent";
+              }
+              return pixels;
+            })(),
+          ),
         })),
       ),
     );
@@ -685,7 +760,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer || !state.clipboard) return;
     const x = state.selection?.x ?? 0;
     const y = state.selection?.y ?? 0;
-    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({ ...entry, layers: entry.layers.map((item) => (item.id === layer.id ? { ...item, pixels: pastePixels(item, entry.width, entry.height, x, y, state.clipboard!) } : item)) }))));
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(
+        entry,
+        state.activeFrameId,
+        layer.id,
+        pastePixels({ ...layer, pixels: pixelsForLayer(entry, state.activeFrameId, layer) }, entry.width, entry.height, x, y, state.clipboard!),
+      ),
+    }))));
   },
   selectAll: () => {
     const asset = activeAsset(get());
@@ -697,7 +779,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const asset = activeAsset(state);
     const layer = activeLayer(state);
     if (!asset || !layer || !state.selection) return;
-    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({ ...entry, layers: entry.layers.map((item) => (item.id === layer.id ? { ...item, pixels: clearSelectionPixels(item.pixels, entry.width, state.selection!) } : item)) }))));
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, clearSelectionPixels(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, state.selection!)),
+    }))));
   },
   flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),
   flipSelectionY: () => set({ clipboard: get().clipboard ? flipClipY(get().clipboard!) : get().clipboard }),
@@ -806,15 +890,46 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...layer,
             pixels: layer.pixels.map((pixel) => (normalizeHex(pixel) === source ? target : pixel)),
           })),
+          frames: asset.frames.map((frame) => ({
+            ...frame,
+            cels: Object.fromEntries(
+              Object.entries(frame.cels ?? {}).map(([layerId, pixels]) => [layerId, pixels.map((pixel) => (normalizeHex(pixel) === source ? target : pixel))]),
+            ),
+          })),
         })),
       })),
     );
   },
   addFrame: () =>
-    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => ({ ...asset, frames: [...asset.frames, { id: uid("frame"), name: `Frame ${asset.frames.length + 1}`, durationMs: 160, layerIds: asset.layers.map((layer) => layer.id) }] })))),
+    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
+      const frame = {
+        id: uid("frame"),
+        name: `Frame ${asset.frames.length + 1}`,
+        durationMs: 160,
+        layerIds: asset.layers.map((layer) => layer.id),
+        cels: Object.fromEntries(asset.layers.map((layer) => [layer.id, Array.from({ length: asset.width * asset.height }, () => "transparent")])),
+      };
+      setTimeout(() => set({ activeFrameId: frame.id }), 0);
+      return { ...asset, frames: [...asset.frames, frame] };
+    }))),
   duplicateFrame: () =>
-    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => ({ ...asset, frames: [...asset.frames, { ...(asset.frames.find((frame) => frame.id === get().activeFrameId) ?? asset.frames[0]), id: uid("frame"), name: `Frame ${asset.frames.length + 1}` }] })))),
-  removeFrame: (id) => set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => ({ ...asset, frames: asset.frames.length <= 1 ? asset.frames : asset.frames.filter((frame) => frame.id !== id) })))),
+    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
+      const source = asset.frames.find((frame) => frame.id === get().activeFrameId) ?? asset.frames[0];
+      const frame = {
+        ...source,
+        id: uid("frame"),
+        name: `Frame ${asset.frames.length + 1}`,
+        cels: Object.fromEntries(asset.layers.map((layer) => [layer.id, [...pixelsForLayer(asset, source?.id ?? null, layer)]])),
+      };
+      setTimeout(() => set({ activeFrameId: frame.id }), 0);
+      return { ...asset, frames: [...asset.frames, frame] };
+    }))),
+  removeFrame: (id) => set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
+    if (asset.frames.length <= 1) return asset;
+    const frames = asset.frames.filter((frame) => frame.id !== id);
+    if (get().activeFrameId === id) setTimeout(() => set({ activeFrameId: frames[0]?.id ?? null }), 0);
+    return { ...asset, frames };
+  }))),
   moveFrame: (id, direction) =>
     set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
       const index = asset.frames.findIndex((frame) => frame.id === id);
