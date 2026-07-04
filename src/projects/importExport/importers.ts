@@ -143,6 +143,38 @@ export const importPngAsset = async (file: File): Promise<PixelAsset> => {
   };
 };
 
+export const importSpritesheetAsAnimation = async (file: File, frameWidth: number, frameHeight: number): Promise<PixelAsset> => {
+  const bitmap = await createImageBitmap(file);
+  const width = Math.max(1, Math.min(bitmap.width, Math.floor(frameWidth)));
+  const height = Math.max(1, Math.min(bitmap.height, Math.floor(frameHeight)));
+  const columns = Math.max(1, Math.floor(bitmap.width / width));
+  const rows = Math.max(1, Math.floor(bitmap.height / height));
+  const layer = createLayer("Imported Frames", width, height);
+  const frames: PixelFrame[] = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const pixels = await cropImagePixels(file, column * width, row * height, width, height);
+      frames.push({
+        id: uid("frame"),
+        name: `Frame ${frames.length + 1}`,
+        durationMs: 160,
+        layerIds: [layer.id],
+        cels: { [layer.id]: pixels },
+      });
+    }
+  }
+
+  return {
+    id: uid("asset"),
+    name: `${file.name.replace(/\.png$/i, "")} sliced`,
+    width,
+    height,
+    layers: [layer],
+    frames: frames.length ? frames : [{ id: uid("frame"), name: "Frame 1", durationMs: 160, layerIds: [layer.id], cels: { [layer.id]: [...layer.pixels] } }],
+  };
+};
+
 export const importAsepriteJson = async (jsonFile: File, imageFile: File): Promise<PixelAsset> => {
   const json = JSON.parse(await jsonFile.text());
   const frameEntries = Array.isArray(json.frames) ? json.frames : Object.values(json.frames ?? {});

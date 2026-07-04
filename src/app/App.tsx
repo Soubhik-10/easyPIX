@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Download, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
-import { useAppStore } from "./store";
+import { AlertTriangle, BookOpen, Download, FileJson, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
+import { projectHealthWarnings, useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
 import { EditorWorkspace } from "../editor/EditorWorkspace";
 import { AnimationWorkspace } from "../animation/AnimationWorkspace";
@@ -9,7 +9,7 @@ import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
 import { PalettesWorkspace } from "../palettes/PalettesWorkspace";
-import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetFramePng, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
+import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetFramePng, exportEngineJson, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
   const project = useAppStore((state) => state.project);
@@ -27,6 +27,7 @@ export const App = () => {
   const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
+  const [engineTarget, setEngineTarget] = useState<"generic" | "godot" | "phaser" | "unity">("generic");
   const browserBackArmed = useRef(false);
 
   useEffect(() => {
@@ -192,6 +193,7 @@ export const App = () => {
 
   const activeAsset = project.assets.find((entry) => entry.id === activeAssetId) ?? project.assets[0];
   const activeFrame = activeAsset?.frames.find((entry) => entry.id === activeFrameId) ?? activeAsset?.frames[0];
+  const healthWarnings = projectHealthWarnings(project);
 
   const exportActivePng = async () => {
     setExportStatus("exporting");
@@ -221,6 +223,13 @@ export const App = () => {
       setExportStatus("error");
       setExportError(error instanceof Error ? error.message : "Project bundle export failed");
     }
+  };
+
+  const exportGameMetadata = async () => {
+    await persist();
+    const snapshot = useAppStore.getState().project ?? project;
+    downloadBlob(exportEngineJson(snapshot, engineTarget), `${snapshot.name.replace(/\s+/g, "-").toLowerCase()}-${engineTarget}.json`);
+    setExportStatus("exported");
   };
 
   const saveLabel =
@@ -283,6 +292,23 @@ export const App = () => {
           </button>
           {exportStatus === "exported" && <span className="status-pill">Export ready</span>}
           {exportStatus === "error" && <span className="status-pill status-error" title={exportError ?? undefined}>Export failed</span>}
+          <select value={engineTarget} onChange={(event) => setEngineTarget(event.target.value as typeof engineTarget)} title="Game export preset">
+            <option value="generic">Generic JSON</option>
+            <option value="godot">Godot JSON</option>
+            <option value="phaser">Phaser JSON</option>
+            <option value="unity">Unity JSON</option>
+          </select>
+          <button onClick={() => void exportGameMetadata()} title="Export game-friendly metadata">
+            <FileJson size={16} /> Game JSON
+          </button>
+          <details className={healthWarnings.length ? "health-chip has-warnings" : "health-chip"}>
+            <summary title="Project health">
+              <AlertTriangle size={16} /> {healthWarnings.length ? `${healthWarnings.length} checks` : "Healthy"}
+            </summary>
+            <div>
+              {healthWarnings.length ? healthWarnings.map((warning) => <p key={warning}>{warning}</p>) : <p>No project health warnings right now.</p>}
+            </div>
+          </details>
           <select value={theme} onChange={(event) => useAppStore.getState().setTheme(event.target.value as "system" | "light" | "dark")} title="Theme">
             <option value="system">System</option>
             <option value="light">Light</option>

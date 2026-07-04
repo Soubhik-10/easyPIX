@@ -464,6 +464,24 @@ canvas {
   box-shadow: 0 12px 26px rgba(36, 45, 38, 0.11);
 }
 
+.reference-overlay {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  max-width: calc(100% - 64px);
+  max-height: calc(100% - 64px);
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+.canvas-scroll > .pixel-canvas {
+  position: relative;
+  z-index: 1;
+}
+
 .sandbox-stage canvas {
   touch-action: none;
 }
@@ -713,6 +731,12 @@ textarea {
   gap: 4px;
   justify-content: end;
   align-items: center;
+  position: relative;
+  z-index: 2;
+  min-width: 104px;
+  padding: 3px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--app-surface) 88%, transparent);
 }
 
 .frame-actions [role="button"] {
@@ -1258,6 +1282,56 @@ button.active,
   color: var(--app-danger);
 }
 
+.health-chip {
+  position: relative;
+}
+
+.health-chip summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  color: var(--app-muted);
+  background: var(--app-surface);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.health-chip summary::-webkit-details-marker {
+  display: none;
+}
+
+.health-chip.has-warnings summary {
+  border-color: color-mix(in srgb, #f59e0b 55%, var(--app-border));
+  color: color-mix(in srgb, #f59e0b 70%, var(--app-text));
+}
+
+.health-chip > div {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  display: grid;
+  gap: 7px;
+  width: min(360px, 88vw);
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.health-chip p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .hero-kicker {
   color: var(--app-accent);
 }
@@ -1347,6 +1421,7 @@ button.active,
 .canvas-scroll,
 .sandbox-stage,
 .animation-preview {
+  position: relative;
   padding: 32px;
 }
 
@@ -2362,8 +2437,10 @@ button.active,
 }
 
 .frame-cell {
-  grid-template-columns: 48px minmax(86px, 1fr) 78px 104px;
+  grid-template-columns: 48px minmax(92px, 1fr) 82px 116px;
   align-items: center;
+  flex: 0 0 340px;
+  isolation: isolate;
 }
 
 .frame-duration {
@@ -2535,6 +2612,49 @@ button.active,
   background: var(--app-surface-2);
 }
 
+.palette-compare-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.palette-compare-panel h2 {
+  margin-bottom: 4px;
+}
+
+.palette-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.palette-compare-card,
+.palette-art-preview {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface-2);
+}
+
+.palette-art-preview canvas {
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-surface);
+  image-rendering: pixelated;
+}
+
+.palette-card-swatches.compact i {
+  flex-basis: 18px;
+  width: 18px;
+  height: 18px;
+}
+
 .palette-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -2609,6 +2729,26 @@ button.active,
   height: 22px;
   border: 1px solid color-mix(in srgb, var(--app-border-strong) 55%, transparent);
   border-radius: 4px;
+}
+
+.palette-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.palette-tags span {
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-muted);
+  background: var(--app-surface-2);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .palette-card-actions {

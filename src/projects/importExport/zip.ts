@@ -135,6 +135,51 @@ export const exportAnimationJson = (asset: PixelAsset) =>
     { type: "application/json" },
   );
 
+export const exportEngineJson = (project: PixelProject, target: "generic" | "godot" | "phaser" | "unity") =>
+  new Blob(
+    [
+      JSON.stringify(
+        {
+          type: `easyPIX-${target}-export`,
+          version: 1,
+          project: { id: project.id, name: project.name, updatedAt: project.updatedAt },
+          assets: project.assets.map((asset) => ({
+            id: asset.id,
+            name: asset.name,
+            width: asset.width,
+            height: asset.height,
+            image: `images/${asset.id}.png`,
+            frames: asset.frames.map((frame, index) => ({
+              id: frame.id,
+              name: frame.name,
+              index,
+              durationMs: frame.durationMs,
+              rect: { x: index * asset.width, y: 0, w: asset.width, h: asset.height },
+            })),
+          })),
+          tilesets: project.tilesets.map((tileset) => ({
+            id: tileset.id,
+            name: tileset.name,
+            tileWidth: tileset.tileWidth,
+            tileHeight: tileset.tileHeight,
+            assetIds: tileset.assetIds,
+          })),
+          scenes: project.scenes.map((scene) => ({
+            id: scene.id,
+            name: scene.name,
+            width: scene.width,
+            height: scene.height,
+            tileSize: scene.tileSize,
+            layers: scene.layers,
+          })),
+        },
+        null,
+        2,
+      ),
+    ],
+    { type: "application/json" },
+  );
+
 export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tileHeight: number, scale = 1) => {
   const columns = Math.max(1, Math.ceil(Math.sqrt(assets.length)));
   const rows = Math.max(1, Math.ceil(assets.length / columns));

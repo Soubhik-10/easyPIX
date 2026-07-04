@@ -135,6 +135,7 @@ type AppState = {
   importPaletteJson: (text: string) => void;
   importPaletteText: (text: string) => void;
   remapColor: (from: string, to: string) => void;
+  remapArtToPalette: (paletteId?: string) => void;
   addFrame: () => void;
   duplicateFrame: () => void;
   addAssetAsFrame: (sourceAssetId: string) => void;
@@ -311,6 +312,25 @@ const channelDistance = (a: string, b: string) => {
   const left = hexChannels(a);
   const right = hexChannels(b);
   return Math.sqrt((left.r - right.r) ** 2 + (left.g - right.g) ** 2 + (left.b - right.b) ** 2);
+};
+
+const nearestColor = (color: string, palette: string[]) =>
+  palette.reduce((best, candidate) => (channelDistance(color, candidate) < channelDistance(color, best) ? candidate : best), palette[0] ?? color);
+
+const remapPixelsToPalette = (pixels: string[], palette: string[]) =>
+  pixels.map((pixel) => (!pixel || pixel === "transparent" || !validHex(pixel) || !palette.length ? pixel : nearestColor(normalizeHex(pixel), palette)));
+
+const usedColorsInProject = (project: PixelProject) => {
+  const colors = new Set<string>();
+  project.assets.forEach((asset) => {
+    asset.layers.forEach((layer) => layer.pixels.forEach((pixel) => {
+      if (validHex(pixel)) colors.add(normalizeHex(pixel));
+    }));
+    asset.frames.forEach((frame) => Object.values(frame.cels ?? {}).forEach((pixels) => pixels.forEach((pixel) => {
+      if (validHex(pixel)) colors.add(normalizeHex(pixel));
+    })));
+  });
+  return [...colors];
 };
 
 const buildPaletteRamp = (color: string) =>
@@ -1090,6 +1110,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       })),
     );
   },
+  remapArtToPalette: (paletteId) => {
+    const state = get();
+    const palette = state.project?.palettes.find((entry) => entry.id === paletteId) ?? state.project?.palettes[0];
+    const colors = uniqueColors(palette?.colors ?? []);
+    if (!colors.length) return;
+    set(
+      withProject(state, (project) => ({
+        ...project,
+        assets: project.assets.map((asset) => ({
+          ...asset,
+          layers: asset.layers.map((layer) => ({ ...layer, pixels: remapPixelsToPalette(layer.pixels, colors) })),
+          frames: asset.frames.map((frame) => ({
+            ...frame,
+            cels: Object.fromEntries(Object.entries(frame.cels ?? {}).map(([layerId, pixels]) => [layerId, remapPixelsToPalette(pixels, colors)])),
+          })),
+        })),
+      })),
+    );
+  },
   addFrame: () =>
     set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
       const frame = {
@@ -1251,4 +1290,34 @@ export const paletteWarnings = (palette: Palette) => {
   const hasNearDuplicate = colors.some((left, index) => colors.slice(index + 1).some((right) => channelDistance(left, right) < 18));
   if (hasNearDuplicate) warnings.push("Some colors are almost identical. Merge near-duplicates unless you need a tiny texture step.");
   return warnings;
+};
+
+export const projectHealthWarnings = (project: PixelProject) => {
+  const warnings: string[] = [];
+  const activePalette = project.palettes[0];
+  if (!project.assets.length) warnings.push("No drawable assets yet.");
+  if (!project.tilesets.length) warnings.push("No tileset exists for tile checking.");
+  if (!project.scenes.length) warnings.push("No sandbox scene exists for checking art in context.");
+  project.assets.forEach((asset) => {
+    if (asset.width > 256 || asset.height > 256) warnings.push(`${asset.name} is large for a pixel editor canvas; performance may drop on mobile.`);
+    if (asset.frames.length > 1 && asset.frames.some((frame) => frame.layerIds.length !== asset.layers.length)) {
+      warnings.push(`${asset.name} has animation frames with different layer coverage.`);
+    }
+    const expected = asset.width * asset.height;
+    asset.layers.forEach((layer) => {
+      if (layer.pixels.length !== expected) warnings.push(`${asset.name}/${layer.name} pixel data has the wrong size.`);
+    });
+    asset.frames.forEach((frame) => {
+      Object.entries(frame.cels ?? {}).forEach(([layerId, pixels]) => {
+        if (pixels.length !== expected) warnings.push(`${asset.name}/${frame.name}/${layerId} cel data has the wrong size.`);
+      });
+    });
+  });
+  if (activePalette) {
+    const paletteColors = new Set(uniqueColors(activePalette.colors));
+    const offPalette = usedColorsInProject(project).filter((color) => !paletteColors.has(color));
+    if (offPalette.length) warnings.push(`${offPalette.length} art color${offPalette.length === 1 ? "" : "s"} are outside the active palette.`);
+    warnings.push(...paletteWarnings(activePalette));
+  }
+  return [...new Set(warnings)].slice(0, 12);
 };

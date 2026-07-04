@@ -5,6 +5,7 @@ export type PalettePreset = {
   credit: string;
   sourceUrl: string;
   note: string;
+  tags?: string[];
   colors: string[];
 };
 
@@ -953,6 +954,76 @@ export const palettePresets: PalettePreset[] = [
     sourceUrl: "https://lospec.com/palette-list/vanilla-milkshake",
     note: "Soft 16-color Lospec pastel palette for cheerful UI, cute sprites, gentle props, and cozy scenes.",
     colors: ["#28282e", "#6c5671", "#d9c8bf", "#f98284", "#b0a9e4", "#accce4", "#b3e3da", "#feaae4", "#87a889", "#b0eb93", "#e9f59d", "#ffe6c6", "#dea38b", "#ffc384", "#fff7a0", "#fff7e4"],
+  },
+  {
+    id: "ammo-8",
+    name: "Ammo-8",
+    category: "limited",
+    credit: "Ammo-8 palette by rsvp asap on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/ammo-8",
+    note: "Eight-color green monochrome ramp for forests, UI mockups, readable silhouettes, and value-first practice.",
+    tags: ["monochrome", "green", "forest", "value", "low-color"],
+    colors: ["#040c06", "#112318", "#1e3a29", "#305d42", "#4d8061", "#89a257", "#bedc7f", "#eeffcc"],
+  },
+  {
+    id: "twilight-5",
+    name: "Twilight 5",
+    category: "limited",
+    credit: "Twilight 5 palette by Star on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/twilight-5",
+    note: "Tiny sunset palette with soft pinks and deep blues for thumbnails, skies, mountains, and moody studies.",
+    tags: ["sunset", "pink", "blue", "mountain", "study"],
+    colors: ["#fbbbad", "#ee8695", "#4a7a96", "#333f58", "#292831"],
+  },
+  {
+    id: "inkpink",
+    name: "INKPINK",
+    category: "limited",
+    credit: "INKPINK palette by Inkpendude on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/inkpink",
+    note: "Six-color pink and purple ramp for portraits, title art, UI accents, and bold stylized sprites.",
+    tags: ["pink", "purple", "portrait", "ui", "ramp"],
+    colors: ["#ffffff", "#fe6c90", "#d03791", "#87286a", "#452459", "#260d34"],
+  },
+  {
+    id: "japanese-woodblock",
+    name: "Japanese Woodblock",
+    category: "game-dev",
+    credit: "Japanese Woodblock palette by Polyducks on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/japanese-woodblock",
+    note: "Twelve colors sampled from old Japanese woodblock prints, useful for paper, water, muted nature, and historical scenes.",
+    tags: ["woodblock", "paper", "muted", "water", "historical"],
+    colors: ["#2b2821", "#624c3c", "#d9ac8b", "#e3cfb4", "#243d5c", "#5d7275", "#5c8b93", "#b1a58d", "#b03a48", "#d4804d", "#e0c872", "#3e6958"],
+  },
+  {
+    id: "pollen8",
+    name: "Pollen8",
+    category: "limited",
+    credit: "Pollen8 palette by Conker on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/pollen8",
+    note: "Bright eight-color palette with rose, cream, yellow, and seafoam colors for cute sprites and cheerful icons.",
+    tags: ["cute", "pastel", "rose", "seafoam", "icons"],
+    colors: ["#73464c", "#ab5675", "#ee6a7c", "#ffa7a5", "#ffe07e", "#ffe7d6", "#72dcbb", "#34acba"],
+  },
+  {
+    id: "1bit-monitor-glow",
+    name: "1bit Monitor Glow",
+    category: "limited",
+    credit: "1bit Monitor Glow palette by Polyducks on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/1bit-monitor-glow",
+    note: "Two-color cyan-black and green-white palette for strict 1-bit experiments and very readable icons.",
+    tags: ["1bit", "black", "white", "monitor", "icons"],
+    colors: ["#222323", "#f0f6f0"],
+  },
+  {
+    id: "mist-gb",
+    name: "Mist GB",
+    category: "limited",
+    credit: "Mist GB palette by Kerrie Lake on Lospec",
+    sourceUrl: "https://lospec.com/palette-list/mist-gb",
+    note: "Four-color Game Boy-like palette with misty teal values for handheld-style sprites and atmosphere.",
+    tags: ["gameboy", "teal", "handheld", "mist", "4-color"],
+    colors: ["#2d1b00", "#1e606e", "#5ab9a8", "#c4f0c2"],
   },
 ];
 

@@ -38,7 +38,7 @@ import {
 import { useAppStore, paletteWarnings } from "../app/store";
 import { renderAsset } from "./canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetPng } from "../projects/importExport/zip";
-import { importPixelFiles } from "../projects/importExport/importers";
+import { importPixelFiles, importSpritesheetAsAnimation } from "../projects/importExport/importers";
 import { palettePresets, palettePresetById } from "../palettes/presets";
 import type { TemplateKind } from "../projects/factory";
 import type { ToolId } from "../projects/types";
@@ -71,6 +71,8 @@ export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasScrollRef = useRef<HTMLDivElement | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
+  const referenceRef = useRef<HTMLInputElement | null>(null);
+  const spritesheetRef = useRef<HTMLInputElement | null>(null);
   const activePointers = useRef(new Map<number, { x: number; y: number }>());
   const pendingTouch = useRef<{ id: number; x: number; y: number; point: { x: number; y: number }; tool: ToolId; timer: number } | null>(null);
   const pinchState = useRef<{ distance: number; zoom: number; scrollLeft: number; scrollTop: number; centerX: number; centerY: number } | null>(null);
@@ -103,6 +105,10 @@ export const EditorWorkspace = () => {
   const [swapFrom, setSwapFrom] = useState(color);
   const [swapTo, setSwapTo] = useState(customColor);
   const [paletteExportText, setPaletteExportText] = useState("");
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [referenceOpacity, setReferenceOpacity] = useState(35);
+  const [sliceWidth, setSliceWidth] = useState(32);
+  const [sliceHeight, setSliceHeight] = useState(32);
   const [mobileMode, setMobileMode] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const [precisionMode, setPrecisionMode] = useState(true);
   const [panMode, setPanMode] = useState(false);
@@ -259,6 +265,26 @@ export const EditorWorkspace = () => {
     event.target.value = "";
   };
 
+  const onReferenceImage = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+    setReferenceUrl(URL.createObjectURL(file));
+    event.target.value = "";
+  };
+
+  const onImportSpritesheet = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const imported = await importSpritesheetAsAnimation(file, sliceWidth, sliceHeight);
+    useAppStore.getState().addImportedAssets([imported]);
+    event.target.value = "";
+  };
+
+  useEffect(() => () => {
+    if (referenceUrl) URL.revokeObjectURL(referenceUrl);
+  }, [referenceUrl]);
+
   return (
     <section className={mobileMode ? "workspace editor-layout detailed-tools mobile-editor-mode" : "workspace editor-layout detailed-tools"}>
       <aside className="tool-rail" data-label-mode="detailed">
@@ -372,6 +398,9 @@ export const EditorWorkspace = () => {
           </button>
         </div>
         <div className="canvas-scroll" ref={canvasScrollRef}>
+          {referenceUrl ? (
+            <img className="reference-overlay" src={referenceUrl} style={{ opacity: referenceOpacity / 100 }} alt="" />
+          ) : null}
           <canvas
             ref={canvasRef}
             className="pixel-canvas"
@@ -418,6 +447,17 @@ export const EditorWorkspace = () => {
             <input ref={importRef} type="file" multiple hidden accept=".png,.piskel,.json,image/png,application/json" onChange={onImportAssets} />
           </div>
           <p className="hint">Imports PNG, Piskel .piskel, and Aseprite JSON with its spritesheet PNG selected together.</p>
+          <div className="compact-grid">
+            <input type="number" min="1" max="512" value={sliceWidth} onChange={(event) => setSliceWidth(Number(event.target.value))} aria-label="Spritesheet frame width" />
+            <input type="number" min="1" max="512" value={sliceHeight} onChange={(event) => setSliceHeight(Number(event.target.value))} aria-label="Spritesheet frame height" />
+          </div>
+          <div className="button-row">
+            <button onClick={() => spritesheetRef.current?.click()}>
+              <Upload size={15} /> Slice PNG frames
+            </button>
+            <input ref={spritesheetRef} type="file" hidden accept=".png,image/png" onChange={onImportSpritesheet} />
+          </div>
+          <p className="hint">Set frame width/height, import a PNG spritesheet, and easyPIX creates one animation asset with all frames.</p>
           <div className="button-row">
             <select value={exportScale} onChange={(event) => setExportScale(Number(event.target.value))}>
               <option value={1}>1x PNG</option>
@@ -430,6 +470,20 @@ export const EditorWorkspace = () => {
               <Download size={15} /> PNG
             </button>
           </div>
+        </section>
+        <section className="panel">
+          <h2><Eye size={16} /> Reference</h2>
+          <div className="button-row">
+            <button onClick={() => referenceRef.current?.click()}><Upload size={15} /> Reference image</button>
+            <button onClick={() => { if (referenceUrl) URL.revokeObjectURL(referenceUrl); setReferenceUrl(""); }}>Clear</button>
+            <input ref={referenceRef} type="file" hidden accept="image/*" onChange={onReferenceImage} />
+          </div>
+          <label>
+            Opacity
+            <input className="range-fill" style={rangeStyle(referenceOpacity, 0, 100)} type="range" min="0" max="100" value={referenceOpacity} onChange={(event) => setReferenceOpacity(Number(event.target.value))} />
+            <span>{referenceOpacity}%</span>
+          </label>
+          <p className="hint">Use this as a faint guide while drawing. It is not saved into the artwork.</p>
         </section>
         <section className="panel">
           <h2><WandSparkles size={16} /> Starter Templates</h2>

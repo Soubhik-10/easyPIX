@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
-import { Download, ExternalLink, FileJson, Palette, Plus, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, ExternalLink, FileJson, Palette, Plus, RefreshCw, Upload, WandSparkles } from "lucide-react";
 import { palettePresets, type PalettePreset } from "./presets";
 import { paletteWarnings, useAppStore } from "../app/store";
 import { downloadBlob } from "../projects/importExport/zip";
+import { renderAsset } from "../editor/canvas/renderers";
+import type { PixelAsset } from "../projects/types";
 
 const categoryLabels: Record<PalettePreset["category"] | "all", string> = {
   all: "All",
@@ -12,22 +14,40 @@ const categoryLabels: Record<PalettePreset["category"] | "all", string> = {
   "retro-hardware": "Retro hardware",
 };
 
+const PaletteArtPreview = ({ asset, label }: { asset: PixelAsset | null; label: string }) => {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (ref.current && asset) renderAsset(ref.current, asset, Math.max(1, Math.floor(96 / Math.max(asset.width, asset.height))), { grid: false, frameId: asset.frames[0]?.id });
+  }, [asset]);
+  return (
+    <div className="palette-art-preview">
+      <span>{label}</span>
+      {asset ? <canvas ref={ref} /> : <p className="hint">No art yet</p>}
+    </div>
+  );
+};
+
 export const PalettesWorkspace = () => {
   const project = useAppStore((state) => state.project)!;
   const [category, setCategory] = useState<PalettePreset["category"] | "all">("all");
   const [query, setQuery] = useState("");
   const [paletteText, setPaletteText] = useState("");
   const [exportText, setExportText] = useState("");
+  const [compareLeft, setCompareLeft] = useState(palettePresets[0]?.id ?? "");
+  const [compareRight, setCompareRight] = useState(palettePresets[1]?.id ?? palettePresets[0]?.id ?? "");
   const activePalette = project.palettes[0];
+  const activeAsset = project.assets.find((entry) => entry.id === useAppStore.getState().activeAssetId) ?? project.assets[0] ?? null;
   const warnings = useMemo(() => paletteWarnings(activePalette), [activePalette]);
   const presets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return palettePresets.filter((preset) => {
       const matchesCategory = category === "all" || preset.category === category;
-      const matchesQuery = !normalizedQuery || `${preset.name} ${preset.credit} ${preset.note}`.toLowerCase().includes(normalizedQuery);
+      const matchesQuery = !normalizedQuery || `${preset.name} ${preset.credit} ${preset.note} ${(preset.tags ?? []).join(" ")}`.toLowerCase().includes(normalizedQuery);
       return matchesCategory && matchesQuery;
     });
   }, [category, query]);
+  const leftPreset = palettePresets.find((preset) => preset.id === compareLeft) ?? palettePresets[0];
+  const rightPreset = palettePresets.find((preset) => preset.id === compareRight) ?? palettePresets[1] ?? palettePresets[0];
 
   const exportCurrent = () => {
     const json = useAppStore.getState().exportPaletteJson();
@@ -69,6 +89,9 @@ export const PalettesWorkspace = () => {
             </button>
             <button onClick={() => useAppStore.getState().sortPalette()}>Sort by value</button>
           </div>
+          <button onClick={() => useAppStore.getState().remapArtToPalette()} title="Replace every art color with the closest active palette color">
+            <WandSparkles size={15} /> Recolor art to active palette
+          </button>
           <textarea value={paletteText} onChange={(event) => setPaletteText(event.target.value)} placeholder="Paste easyPIX palette JSON, Lospec/GPL text, or hex colors." />
           <button onClick={() => { useAppStore.getState().importPaletteJson(paletteText); setPaletteText(""); }}>
             <Upload size={15} /> Import palette
@@ -80,6 +103,29 @@ export const PalettesWorkspace = () => {
         </aside>
 
         <main className="palette-browser">
+          <section className="panel palette-compare-panel">
+            <div>
+              <h2>Compare Palettes</h2>
+              <p className="hint">Preview two real palettes side by side, then use one, append it, or recolor the whole project to your active palette.</p>
+            </div>
+            <div className="palette-compare-grid">
+              {[leftPreset, rightPreset].map((preset, index) => (
+                <div className="palette-compare-card" key={`${preset.id}-${index}`}>
+                  <select value={index === 0 ? compareLeft : compareRight} onChange={(event) => (index === 0 ? setCompareLeft(event.target.value) : setCompareRight(event.target.value))}>
+                    {palettePresets.map((entry) => <option value={entry.id} key={entry.id}>{entry.name}</option>)}
+                  </select>
+                  <div className="palette-card-swatches compact">
+                    {preset.colors.map((color) => <i key={color} style={{ background: color }} title={color} />)}
+                  </div>
+                  <div className="button-row">
+                    <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")}><Palette size={15} /> Use</button>
+                    <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "append")}><Plus size={15} /> Append</button>
+                  </div>
+                </div>
+              ))}
+              <PaletteArtPreview asset={activeAsset} label="Current art" />
+            </div>
+          </section>
           <div className="palette-browser-toolbar">
             <div className="palette-filter-row">
               {(Object.keys(categoryLabels) as Array<PalettePreset["category"] | "all">).map((entry) => (
@@ -110,6 +156,11 @@ export const PalettesWorkspace = () => {
                     <i key={color} style={{ background: color }} title={color} />
                   ))}
                 </div>
+                {preset.tags?.length ? (
+                  <div className="palette-tags">
+                    {preset.tags.slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}
+                  </div>
+                ) : null}
                 <p className="hint">{preset.note}</p>
                 <div className="palette-card-actions">
                   <button onClick={() => useAppStore.getState().applyPalettePreset(preset.id, "replace")} title={`Use ${preset.name}`}>
@@ -132,6 +183,9 @@ export const PalettesWorkspace = () => {
                     }}
                   >
                     <Download size={15} />
+                  </button>
+                  <button onClick={() => { useAppStore.getState().applyPalettePreset(preset.id, "replace"); useAppStore.getState().remapArtToPalette(); }} title={`Use ${preset.name} and recolor art`}>
+                    <RefreshCw size={15} />
                   </button>
                 </div>
               </article>
