@@ -109,6 +109,7 @@ export const floodFill = (
   startY: number,
   color: string,
 ) => {
+  if (startX < 0 || startY < 0 || startX >= width || startY >= height) return pixels;
   const target = pixels[indexAt(startX, startY, width)];
   if (target === color) return pixels;
   const next = [...pixels];

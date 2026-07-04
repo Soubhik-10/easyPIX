@@ -18,6 +18,11 @@ describe("pixel operations", () => {
     expect(filled[4]).toBe("#000000");
   });
 
+  it("ignores fill starts outside the canvas", () => {
+    const pixels = ["a", "b", "c", "d"];
+    expect(floodFill(pixels, 2, 2, -1, 0, "#ff0000")).toBe(pixels);
+  });
+
   it("draws a diagonal line", () => {
     const pixels = drawLine(blank(3, 3), 3, 3, 0, 0, 2, 2, "#00ff00");
     expect([pixels[0], pixels[4], pixels[8]]).toEqual(["#00ff00", "#00ff00", "#00ff00"]);

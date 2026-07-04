@@ -129,6 +129,7 @@ type AppState = {
   remapColor: (from: string, to: string) => void;
   addFrame: () => void;
   duplicateFrame: () => void;
+  addAssetAsFrame: (sourceAssetId: string) => void;
   removeFrame: (id: string) => void;
   moveFrame: (id: string, direction: -1 | 1) => void;
   setFrameDuration: (id: string, durationMs: number) => void;
@@ -354,6 +355,18 @@ const paintAt = (pixels: string[], width: number, height: number, x: number, y: 
   }, pixels);
 };
 
+const compositeAssetPixels = (asset: PixelAsset, frameId?: string | null) => {
+  const pixels = Array.from({ length: asset.width * asset.height }, () => "transparent");
+  asset.layers.forEach((layer) => {
+    if (!layer.visible) return;
+    const layerPixels = pixelsForLayer(asset, frameId ?? asset.frames[0]?.id ?? null, layer);
+    layerPixels.forEach((color, index) => {
+      if (color && color !== "transparent") pixels[index] = color;
+    });
+  });
+  return pixels;
+};
+
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   project: null,
@@ -495,7 +508,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ lassoPoints: points, selection: lassoBounds(points) });
       return;
     }
-    if (![...strokeTools, "fill"].includes(state.tool)) return;
+    if (state.tool === "fill") {
+      if (x < 0 || y < 0 || x >= asset.width || y >= asset.height) return;
+      set({
+        ...withProject(state, (project) =>
+          updateActiveAsset(project, state.activeAssetId, (entry) => ({
+            ...setFrameLayerPixels(
+              entry,
+              state.activeFrameId,
+              layer.id,
+              floodFill(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, x, y, state.color),
+            ),
+          })),
+        state.strokeHistoryBase),
+        strokeLast: { x, y },
+      });
+      return;
+    }
+    if (!strokeTools.includes(state.tool)) return;
     if (state.strokeLast && state.brushStabilizer > 0 && Math.abs(x - state.strokeLast.x) + Math.abs(y - state.strokeLast.y) < state.brushStabilizer) return;
     const rawPoints = state.strokeLast && strokeTools.includes(state.tool) ? linePoints(state.strokeLast.x, state.strokeLast.y, x, y) : [{ x, y }];
     const points = state.pixelPerfect && state.tool === "pencil" && state.brushSize === 1 ? pixelPerfectPoints(rawPoints) : rawPoints;
@@ -991,6 +1021,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       setTimeout(() => set({ activeFrameId: frame.id }), 0);
       return { ...asset, frames: [...asset.frames, frame] };
     }))),
+  addAssetAsFrame: (sourceAssetId) =>
+    set(withProject(get(), (project) => {
+      const source = project.assets.find((entry) => entry.id === sourceAssetId);
+      if (!source) return project;
+      return updateActiveAsset(project, get().activeAssetId, (asset) => {
+        const layer = asset.layers[0];
+        if (!layer) return asset;
+        const framePixels =
+          source.width === asset.width && source.height === asset.height
+            ? compositeAssetPixels(source, source.frames[0]?.id)
+            : resizePixels(compositeAssetPixels(source, source.frames[0]?.id), source.width, source.height, asset.width, asset.height);
+        const frame = {
+          id: uid("frame"),
+          name: source.name,
+          durationMs: 160,
+          layerIds: asset.layers.map((entry) => entry.id),
+          cels: {
+            ...Object.fromEntries(asset.layers.map((entry) => [entry.id, Array.from({ length: asset.width * asset.height }, () => "transparent")])),
+            [layer.id]: framePixels,
+          },
+        };
+        setTimeout(() => set({ activeFrameId: frame.id }), 0);
+        return { ...asset, frames: [...asset.frames, frame] };
+      });
+    })),
   removeFrame: (id) => set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
     if (asset.frames.length <= 1) return asset;
     const frames = asset.frames.filter((frame) => frame.id !== id);
@@ -1083,6 +1138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       projects: await listProjects(),
       activeAssetId: project.assets[0]?.id ?? null,
       activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
+      activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,

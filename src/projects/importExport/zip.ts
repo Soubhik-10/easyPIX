@@ -100,6 +100,39 @@ export const exportAssetPng = (asset: PixelAsset, scale = 1) => {
   return new Blob([bytes], { type: "image/png" });
 };
 
+export const exportAssetFramePng = (asset: PixelAsset, frameId: string, scale = 1) => {
+  const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
+  const base64 = compositeAssetToDataUrl(asset, frame?.layerIds, scale, frame?.id);
+  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  return new Blob([bytes], { type: "image/png" });
+};
+
+export const exportAnimationJson = (asset: PixelAsset) =>
+  new Blob(
+    [
+      JSON.stringify(
+        {
+          type: "easyPIX-animation",
+          version: 1,
+          asset: { id: asset.id, name: asset.name, width: asset.width, height: asset.height },
+          frames: asset.frames.map((frame, index) => ({
+            id: frame.id,
+            name: frame.name,
+            index,
+            durationMs: frame.durationMs,
+            x: index * asset.width,
+            y: 0,
+            width: asset.width,
+            height: asset.height,
+          })),
+        },
+        null,
+        2,
+      ),
+    ],
+    { type: "application/json" },
+  );
+
 export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tileHeight: number, scale = 1) => {
   const columns = Math.max(1, Math.ceil(Math.sqrt(assets.length)));
   const rows = Math.max(1, Math.ceil(assets.length / columns));

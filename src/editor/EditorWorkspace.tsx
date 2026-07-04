@@ -162,6 +162,13 @@ export const EditorWorkspace = () => {
               </option>
             ))}
           </select>
+          <select value={activeFrameId ?? asset.frames[0]?.id ?? ""} onChange={(event) => useAppStore.getState().setActiveFrame(event.target.value)} title="Animation frame">
+            {asset.frames.map((frame, index) => (
+              <option key={frame.id} value={frame.id}>
+                F{index + 1} {frame.name}
+              </option>
+            ))}
+          </select>
           <label>
             Zoom
             <input className="range-fill" style={rangeStyle(zoom, 4, 80)} type="range" min="4" max="80" value={zoom} onChange={(event) => useAppStore.getState().setZoom(Number(event.target.value))} />
