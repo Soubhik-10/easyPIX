@@ -126,6 +126,8 @@ export const EditorWorkspace = () => {
   const brushSize = useAppStore((state) => state.brushSize);
   const brushShape = useAppStore((state) => state.brushShape);
   const stampKind = useAppStore((state) => state.stampKind);
+  const stampPrimaryColor = useAppStore((state) => state.stampPrimaryColor);
+  const stampAccentColor = useAppStore((state) => state.stampAccentColor);
   const cozyBrushKind = useAppStore((state) => state.cozyBrushKind);
   const pixelPerfect = useAppStore((state) => state.pixelPerfect);
   const brushStabilizer = useAppStore((state) => state.brushStabilizer);
@@ -480,13 +482,26 @@ export const EditorWorkspace = () => {
         </section>
         <section className="panel">
           <h2><Flower2 size={16} /> Fun Drawing Helpers</h2>
-          <p className="hint">Stamps and cozy brushes are deterministic little pixel helpers, not AI. Pick one, then draw on the canvas.</p>
+          <p className="hint">Stamps use their own fixed colors, so a heart stays a heart. Replace the colors here when you want a different set.</p>
           <label className="compact-label">
             Shape stamp
             <select value={stampKind} onChange={(event) => { useAppStore.getState().setStampKind(event.target.value as StampKind); useAppStore.getState().setTool("stamp"); }}>
               {stamps.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
             </select>
           </label>
+          <div className="stamp-color-row" aria-label="Stamp colors">
+            <label>
+              Main
+              <input type="color" value={stampPrimaryColor} onChange={(event) => useAppStore.getState().setStampPrimaryColor(event.target.value)} />
+            </label>
+            <label>
+              Accent
+              <input type="color" value={stampAccentColor} onChange={(event) => useAppStore.getState().setStampAccentColor(event.target.value)} />
+            </label>
+            <button onClick={() => { useAppStore.getState().setStampPrimaryColor("#f43f5e"); useAppStore.getState().setStampAccentColor("#fecdd3"); }}>
+              Heart colors
+            </button>
+          </div>
           <div className="stamp-grid">
             {stamps.slice(0, 10).map((entry) => (
               <button key={entry.id} className={stampKind === entry.id ? "active" : ""} onClick={() => { useAppStore.getState().setStampKind(entry.id); useAppStore.getState().setTool("stamp"); }}>{entry.label}</button>

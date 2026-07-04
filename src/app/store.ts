@@ -58,6 +58,8 @@ type AppState = {
   brushSize: number;
   brushShape: "square" | "circle";
   stampKind: StampKind;
+  stampPrimaryColor: string;
+  stampAccentColor: string;
   cozyBrushKind: CozyBrushKind;
   pixelPerfect: boolean;
   brushStabilizer: number;
@@ -91,6 +93,8 @@ type AppState = {
   setBrushSize: (size: number) => void;
   setBrushShape: (shape: "square" | "circle") => void;
   setStampKind: (kind: StampKind) => void;
+  setStampPrimaryColor: (color: string) => void;
+  setStampAccentColor: (color: string) => void;
   setCozyBrushKind: (kind: CozyBrushKind) => void;
   togglePixelPerfect: () => void;
   setBrushStabilizer: (value: number) => void;
@@ -359,7 +363,7 @@ const paintAt = (pixels: string[], width: number, height: number, x: number, y: 
     if (state.tool === "magicInk") return magicInkBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
     if (state.tool === "cozy") return cozyBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.cozyBrushKind);
     if (state.tool === "ramp") return colorRampBrush(next, width, height, point.x, point.y, state.color, state.brushSize, state.brushShape);
-    if (state.tool === "stamp") return drawStamp(next, width, height, point.x, point.y, state.color, state.stampKind);
+    if (state.tool === "stamp") return drawStamp(next, width, height, point.x, point.y, { primary: state.stampPrimaryColor, accent: state.stampAccentColor }, state.stampKind);
     if (state.tool === "replace") {
       const target = next[point.y * width + point.x];
       return target ? replaceColor(next, target, state.color) : next;
@@ -424,6 +428,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   brushSize: 1,
   brushShape: "square",
   stampKind: "heart",
+  stampPrimaryColor: "#f43f5e",
+  stampAccentColor: "#fecdd3",
   cozyBrushKind: "grass",
   pixelPerfect: false,
   brushStabilizer: 0,
@@ -508,6 +514,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBrushSize: (brushSize) => set({ brushSize }),
   setBrushShape: (brushShape) => set({ brushShape }),
   setStampKind: (stampKind) => set({ stampKind }),
+  setStampPrimaryColor: (stampPrimaryColor) => set({ stampPrimaryColor }),
+  setStampAccentColor: (stampAccentColor) => set({ stampAccentColor }),
   setCozyBrushKind: (cozyBrushKind) => set({ cozyBrushKind }),
   togglePixelPerfect: () => set({ pixelPerfect: !get().pixelPerfect }),
   setBrushStabilizer: (brushStabilizer) => set({ brushStabilizer }),

@@ -80,8 +80,9 @@ describe("pixel operations", () => {
   });
 
   it("draws deterministic stamps and cleans lonely pixels", () => {
-    const stamped = drawStamp(blank(7, 7), 7, 7, 3, 3, "#ff0000", "heart");
+    const stamped = drawStamp(blank(12, 12), 12, 12, 6, 6, { primary: "#ff0000", accent: "#ffc0cb" }, "heart");
     expect(stamped.filter((color) => color === "#ff0000").length).toBeGreaterThan(4);
+    expect(stamped.filter((color) => color === "#ffc0cb").length).toBeGreaterThan(4);
     const noisy = setPixel(blank(3, 3), 3, 3, 1, 1, "#ffffff");
     expect(applyBeginnerEffect(noisy, 3, 3, "clean")[4]).toBe("transparent");
   });

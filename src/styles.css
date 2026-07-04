@@ -2183,6 +2183,35 @@ button.active,
   white-space: nowrap;
 }
 
+.stamp-color-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.stamp-color-row label {
+  display: grid;
+  gap: 5px;
+  color: var(--app-muted);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.stamp-color-row input[type="color"] {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 3px;
+}
+
+.stamp-color-row button {
+  height: 36px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
 .compact-label {
   display: grid;
   gap: 6px;

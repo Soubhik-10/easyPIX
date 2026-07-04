@@ -3,6 +3,7 @@ import type { PixelLayer, Selection } from "../../projects/types";
 export type StampKind = "heart" | "star" | "leaf" | "flower" | "sparkle" | "rock" | "mushroom" | "fence" | "window" | "door" | "bottle" | "lamp" | "book" | "chair" | "sign";
 export type CozyBrushKind = "grass" | "flower" | "dirt" | "water" | "stars" | "fireflies" | "snow" | "rain";
 export type PixelEffect = "outline" | "shadow" | "clean" | "readable" | "contrast" | "highlight" | "cozy" | "reduceColors";
+export type StampColors = { primary: string; accent: string; outline?: string };
 
 export const indexAt = (x: number, y: number, width: number) => y * width + x;
 
@@ -138,7 +139,7 @@ export const cozyBrush = (pixels: string[], width: number, height: number, x: nu
 };
 
 const stampPatterns: Record<StampKind, string[]> = {
-  heart: ["0110", "1111", "1111", "0110"],
+  heart: ["0011001100", "0111111110", "1112222111", "1122222211", "1112222111", "0111221110", "0011111100", "0001111000", "0000110000"],
   star: ["00100", "10101", "01110", "10101", "00100"],
   leaf: ["0010", "0111", "1110", "0100"],
   flower: ["010", "121", "010"],
@@ -155,15 +156,15 @@ const stampPatterns: Record<StampKind, string[]> = {
   sign: ["11111", "12221", "11111", "00100", "00100"],
 };
 
-export const drawStamp = (pixels: string[], width: number, height: number, x: number, y: number, color: string, kind: StampKind) => {
+export const drawStamp = (pixels: string[], width: number, height: number, x: number, y: number, colors: StampColors, kind: StampKind) => {
   let next = [...pixels];
   const pattern = stampPatterns[kind];
   const originY = y - Math.floor(pattern.length / 2);
   const originX = x - Math.floor(pattern[0].length / 2);
-  const colors = { "1": color, "2": adjustColor(color, 45) } as Record<string, string>;
+  const swatches = { "1": colors.primary, "2": colors.accent || adjustColor(colors.primary, 45), "3": colors.outline || "#1f1f29" } as Record<string, string>;
   pattern.forEach((row, yy) => {
     [...row].forEach((cell, xx) => {
-      if (cell !== "0") next = setPixel(next, width, height, originX + xx, originY + yy, colors[cell] ?? color);
+      if (cell !== "0") next = setPixel(next, width, height, originX + xx, originY + yy, swatches[cell] ?? colors.primary);
     });
   });
   return next;
