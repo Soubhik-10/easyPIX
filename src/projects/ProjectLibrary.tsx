@@ -198,6 +198,13 @@ export const ProjectLibrary = () => {
           </section>
 
           <section className="pixel-garden-panel" aria-label="Tiny pixel garden">
+            <div className="pixel-garden-clouds">
+              <i />
+              <i />
+            </div>
+            <div className="pixel-garden-pixels">
+              {Array.from({ length: 10 }, (_, index) => <i key={index} />)}
+            </div>
             <div className="pixel-garden-sky">
               {Array.from({ length: 7 }, (_, index) => <i key={index} />)}
             </div>
@@ -211,6 +218,11 @@ export const ProjectLibrary = () => {
             </div>
             <div className="pixel-garden-sign">
               <span>local files</span>
+            </div>
+            <div className="pixel-garden-tools" aria-hidden="true">
+              <i />
+              <i />
+              <i />
             </div>
           </section>
         </section>

@@ -125,6 +125,12 @@ export const AnimationWorkspace = () => {
     useAppStore.getState().setActiveFrame(frameId);
     useAppStore.getState().setWorkspace("editor");
   };
+  const addAllProjectArtAsFrames = () => {
+    sourceAssets.forEach((entry) => useAppStore.getState().addAssetAsFrame(entry.id));
+  };
+  const setAllFrameDurations = (durationMs: number) => {
+    asset.frames.forEach((frame) => useAppStore.getState().setFrameDuration(frame.id, durationMs));
+  };
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -166,6 +172,11 @@ export const AnimationWorkspace = () => {
           <input type="checkbox" checked={onionSkin} onChange={() => useAppStore.getState().toggleOnionSkin()} />
           Onion skin
         </label>
+        <div className="animation-preset-row" aria-label="Animation timing presets">
+          <button onClick={() => setAllFrameDurations(80)}>Fast</button>
+          <button onClick={() => setAllFrameDurations(140)}>Normal</button>
+          <button onClick={() => setAllFrameDurations(220)}>Slow</button>
+        </div>
         <button onClick={() => useAppStore.getState().addFrame()}>
           <Plus size={16} /> Add frame
         </button>
@@ -197,7 +208,10 @@ export const AnimationWorkspace = () => {
       </aside>
       <aside className="panel frame-source-panel">
         <h2><ImagePlus size={16} /> Add Project Art As Frames</h2>
-        <p className="hint">Made 6 drawings already? Add each one here and easyPIX converts it into animation frames on the selected asset.</p>
+        <p className="hint">Add any drawing here and easyPIX converts it into an animation frame on the selected asset.</p>
+        <button onClick={addAllProjectArtAsFrames} disabled={!sourceAssets.length}>
+          <ImagePlus size={16} /> Add all project art
+        </button>
         <div className="frame-source-list">
           {sourceAssets.length ? sourceAssets.map((entry) => (
             <button key={entry.id} className="frame-source-row" onClick={() => useAppStore.getState().addAssetAsFrame(entry.id)}>

@@ -1,11 +1,12 @@
 import { PointerEvent, useEffect, useRef } from "react";
-import { Download, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, TreePine, Waves } from "lucide-react";
+import { Download, Eraser, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, TreePine, Waves } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderScene } from "../editor/canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob } from "../projects/importExport/zip";
 import type { SceneLayer } from "../projects/types";
 
 const sceneBrushes = [
+  { id: "erase", label: "Erase", icon: Eraser },
   { id: "grass", label: "Grass", icon: Leaf },
   { id: "path", label: "Path", icon: Mountain },
   { id: "water", label: "Water", icon: Waves },

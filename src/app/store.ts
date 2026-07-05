@@ -27,7 +27,7 @@ import {
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
-type SceneBrush = "asset" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
+type SceneBrush = "asset" | "erase" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
 type SceneRotation = 0 | 90 | 180 | 270;
 
 type AppState = {
@@ -225,7 +225,7 @@ const ensureTemplateAsset = (project: PixelProject, kind: TemplateKind) => {
 };
 
 const layerForSceneBrush = (brush: SceneBrush, activeLayer: SceneLayer): SceneLayer => {
-  if (brush === "asset") return activeLayer;
+  if (brush === "asset" || brush === "erase") return activeLayer;
   if (brush === "grass" || brush === "path" || brush === "water") return "ground";
   if (brush === "shadow") return "overlay";
   return "objects";
@@ -1220,7 +1220,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         let assetId = state.activeAssetId;
         let shadowAssetId: string | null = null;
 
-        if (sceneBrush !== "asset") {
+        if (sceneBrush !== "asset" && sceneBrush !== "erase") {
           const ensured = ensureTemplateAsset(nextProject, sceneBrush);
           nextProject = ensured.project;
           assetId = ensured.assetId;
@@ -1245,6 +1245,15 @@ export const useAppStore = create<AppState>((set, get) => ({
               objects: sceneCells(scene, scene.layers.objects),
               overlay: sceneCells(scene, scene.layers.overlay),
             };
+            if (sceneBrush === "erase") {
+              return {
+                ...scene,
+                layers: {
+                  ...normalizedLayers,
+                  [scene.activeLayer]: normalizedLayers[scene.activeLayer].map((value, i) => (i === index ? null : value)),
+                },
+              };
+            }
             const layers = {
               ...normalizedLayers,
               [targetLayer]: normalizedLayers[targetLayer].map((value, i) => (i === index ? sceneTileRef(assetId, state) : value)),

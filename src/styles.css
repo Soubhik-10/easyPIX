@@ -616,7 +616,7 @@ textarea {
 .animation-layout {
   display: grid;
   grid-template-columns: 250px 280px minmax(420px, 1fr);
-  grid-template-rows: minmax(0, 1fr) 136px;
+  grid-template-rows: minmax(0, 1fr) 156px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -635,9 +635,9 @@ textarea {
 .timeline {
   grid-column: 1 / -1;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
-  padding: 12px;
+  padding: 10px 12px;
   border-top: 1px solid #cbd5cb;
   overflow-x: auto;
   overflow-y: hidden;
@@ -645,12 +645,15 @@ textarea {
 }
 
 .frame-cell {
+  position: relative;
   display: grid;
-  grid-template-columns: 48px minmax(86px, 1fr) 78px 104px;
-  align-items: center;
-  gap: 8px;
-  min-width: 310px;
-  height: 108px;
+  grid-template-columns: 1fr;
+  grid-template-rows: 52px 22px 30px;
+  align-items: stretch;
+  justify-items: stretch;
+  gap: 6px;
+  min-width: 132px;
+  height: 128px;
   padding: 8px;
   overflow: hidden;
 }
@@ -746,8 +749,8 @@ textarea {
 .frame-thumb-wrap {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 100%;
+  height: 52px;
   overflow: hidden;
 }
 
@@ -759,26 +762,41 @@ textarea {
 .frame-actions {
   display: grid;
   grid-template-columns: repeat(4, 22px);
-  gap: 4px;
+  gap: 3px;
   justify-content: end;
   align-items: center;
-  position: relative;
+  position: absolute;
+  top: 6px;
+  right: 6px;
   z-index: 2;
-  min-width: 104px;
+  min-width: 97px;
   padding: 3px;
   border-radius: 7px;
   background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, #020617 16%, transparent);
 }
 
 .frame-actions [role="button"] {
   display: grid;
   place-items: center;
   width: 22px;
-  height: 28px;
+  height: 24px;
   border: 1px solid var(--app-border);
   border-radius: 6px;
   color: var(--app-text);
   background: var(--app-surface);
+}
+
+.animation-preset-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.animation-preset-row button {
+  justify-content: center;
+  min-width: 0;
+  padding-inline: 6px;
 }
 
 .frame-actions [role="button"]:hover,
@@ -1155,8 +1173,14 @@ textarea {
   }
 
   .frame-cell {
-    min-width: 340px;
-    height: 118px;
+    flex-basis: 168px;
+    min-width: 168px;
+    height: 142px;
+  }
+
+  .frame-actions {
+    grid-template-columns: repeat(4, 34px);
+    min-width: 148px;
   }
 }
 
@@ -2076,7 +2100,10 @@ button.active,
   .palette-strip i,
   .tiny-pixel-sprite,
   .garden-plant,
-  .pixel-garden-sky i {
+  .pixel-garden-sky i,
+  .pixel-garden-clouds i,
+  .pixel-garden-pixels i,
+  .pixel-garden-tools i {
     animation: none;
   }
 }
@@ -2204,9 +2231,68 @@ button.active,
 .pixel-garden-sky,
 .pixel-garden-ground,
 .pixel-garden-plants,
-.pixel-garden-sign {
+.pixel-garden-sign,
+.pixel-garden-clouds,
+.pixel-garden-pixels,
+.pixel-garden-tools {
   position: absolute;
 }
+
+.pixel-garden-clouds {
+  inset: 20px -80px auto -60px;
+  height: 34px;
+  pointer-events: none;
+}
+
+.pixel-garden-clouds i {
+  position: absolute;
+  display: block;
+  width: 70px;
+  height: 18px;
+  background:
+    linear-gradient(90deg, transparent 0 8px, rgba(255, 255, 255, 0.82) 8px 62px, transparent 62px),
+    linear-gradient(90deg, transparent 0 20px, rgba(255, 255, 255, 0.92) 20px 48px, transparent 48px);
+  background-size: 70px 9px, 70px 9px;
+  background-position: 0 9px, 0 0;
+  background-repeat: no-repeat;
+  filter: drop-shadow(5px 5px 0 color-mix(in srgb, #60a5fa 28%, transparent));
+  animation: garden-cloud-drift 13s linear infinite;
+}
+
+.pixel-garden-clouds i:nth-child(2) {
+  top: 22px;
+  left: 44%;
+  width: 52px;
+  animation-duration: 17s;
+  animation-delay: -7s;
+  opacity: 0.78;
+}
+
+.pixel-garden-pixels {
+  inset: 14px 18px 52px 18px;
+  pointer-events: none;
+}
+
+.pixel-garden-pixels i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: #60a5fa;
+  box-shadow: 8px 8px 0 color-mix(in srgb, #f472b6 78%, transparent);
+  animation: garden-pixel-float 3.6s steps(4, end) infinite;
+}
+
+.pixel-garden-pixels i:nth-child(1) { left: 8%; top: 44%; background: #facc15; animation-delay: -400ms; }
+.pixel-garden-pixels i:nth-child(2) { left: 18%; top: 18%; background: #38bdf8; animation-delay: -900ms; }
+.pixel-garden-pixels i:nth-child(3) { left: 28%; top: 58%; background: #fb7185; animation-delay: -1.3s; }
+.pixel-garden-pixels i:nth-child(4) { left: 42%; top: 30%; background: #a78bfa; animation-delay: -1.7s; }
+.pixel-garden-pixels i:nth-child(5) { left: 54%; top: 48%; background: #22c55e; animation-delay: -2.1s; }
+.pixel-garden-pixels i:nth-child(6) { left: 64%; top: 18%; background: #fb923c; animation-delay: -2.5s; }
+.pixel-garden-pixels i:nth-child(7) { left: 74%; top: 58%; background: #f472b6; animation-delay: -2.9s; }
+.pixel-garden-pixels i:nth-child(8) { left: 83%; top: 32%; background: #67e8f9; animation-delay: -3.3s; }
+.pixel-garden-pixels i:nth-child(9) { left: 90%; top: 50%; background: #bef264; animation-delay: -1.1s; }
+.pixel-garden-pixels i:nth-child(10) { left: 36%; top: 12%; background: #ffffff; animation-delay: -600ms; }
 
 .pixel-garden-sky {
   inset: 18px 18px auto 18px;
@@ -2332,6 +2418,44 @@ button.active,
   letter-spacing: 0;
 }
 
+.pixel-garden-tools {
+  left: 18px;
+  bottom: 54px;
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.pixel-garden-tools i {
+  display: block;
+  width: 14px;
+  height: 36px;
+  border: 2px solid color-mix(in srgb, var(--app-border-strong) 68%, transparent);
+  border-radius: 3px 3px 6px 6px;
+  background:
+    linear-gradient(#f8fafc 0 7px, transparent 7px),
+    linear-gradient(90deg, #60a5fa 0 50%, #2563eb 50%);
+  box-shadow: 5px 5px 0 color-mix(in srgb, #020617 18%, transparent);
+  transform-origin: bottom center;
+  animation: garden-tool-pop 2.8s steps(2, end) infinite;
+}
+
+.pixel-garden-tools i:nth-child(2) {
+  height: 28px;
+  background:
+    linear-gradient(#f8fafc 0 7px, transparent 7px),
+    linear-gradient(90deg, #fb7185 0 50%, #f97316 50%);
+  animation-delay: 420ms;
+}
+
+.pixel-garden-tools i:nth-child(3) {
+  height: 22px;
+  background:
+    linear-gradient(#f8fafc 0 7px, transparent 7px),
+    linear-gradient(90deg, #22c55e 0 50%, #84cc16 50%);
+  animation-delay: 840ms;
+}
+
 @keyframes garden-sway {
   50% {
     transform: translateX(2px);
@@ -2342,6 +2466,28 @@ button.active,
   50% {
     transform: translateY(3px);
     opacity: 0.55;
+  }
+}
+
+@keyframes garden-cloud-drift {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(125%);
+  }
+}
+
+@keyframes garden-pixel-float {
+  50% {
+    transform: translate(4px, -6px);
+    opacity: 0.7;
+  }
+}
+
+@keyframes garden-tool-pop {
+  50% {
+    transform: translateY(-4px);
   }
 }
 
@@ -2691,17 +2837,19 @@ button.active,
 }
 
 .frame-cell {
-  grid-template-columns: 48px minmax(92px, 1fr) 82px 116px;
-  align-items: center;
-  flex: 0 0 340px;
+  grid-template-columns: 1fr;
+  grid-template-rows: 52px 22px 30px;
+  align-items: stretch;
+  flex: 0 0 142px;
   isolation: isolate;
 }
 
 .frame-duration {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  min-width: 88px;
+  min-width: 0;
   color: var(--app-muted);
   font-size: 12px;
 }
