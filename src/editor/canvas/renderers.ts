@@ -1,4 +1,4 @@
-import type { PixelAsset, PixelLayer, Scene, SceneCell, Selection } from "../../projects/types";
+import type { MovePreview, PixelAsset, PixelLayer, Scene, SceneCell, Selection } from "../../projects/types";
 
 export const layerPixelsForFrame = (asset: PixelAsset, frameId: string | null | undefined, layer: PixelLayer) => {
   const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
@@ -45,11 +45,46 @@ export const drawPixelLayer = (
   ctx.restore();
 };
 
+const drawMovedPixelLayer = (
+  ctx: CanvasRenderingContext2D,
+  layer: PixelLayer,
+  width: number,
+  height: number,
+  scale: number,
+  movePreview: NonNullable<MovePreview>,
+) => {
+  if (!layer.visible) return;
+  const { selection, dx, dy } = movePreview;
+  ctx.save();
+  ctx.globalAlpha = layer.opacity;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const insideSelection = x >= selection.x && y >= selection.y && x < selection.x + selection.width && y < selection.y + selection.height;
+      if (insideSelection) continue;
+      const color = layer.pixels[y * width + x];
+      if (color && color !== "transparent") {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * scale, y * scale, scale, scale);
+      }
+    }
+  }
+  for (let y = 0; y < selection.height; y += 1) {
+    for (let x = 0; x < selection.width; x += 1) {
+      const color = layer.pixels[(selection.y + y) * width + selection.x + x];
+      if (color && color !== "transparent") {
+        ctx.fillStyle = color;
+        ctx.fillRect((selection.x + dx + x) * scale, (selection.y + dy + y) * scale, scale, scale);
+      }
+    }
+  }
+  ctx.restore();
+};
+
 export const renderAsset = (
   canvas: HTMLCanvasElement,
   asset: PixelAsset,
   scale: number,
-  options: { grid?: boolean; selection?: Selection; activeLayerIds?: string[]; frameId?: string | null } = {},
+  options: { grid?: boolean; selection?: Selection; movePreview?: MovePreview; activeLayerIds?: string[]; frameId?: string | null } = {},
 ) => {
   canvas.width = asset.width * scale;
   canvas.height = asset.height * scale;
@@ -57,7 +92,13 @@ export const renderAsset = (
   ctx.imageSmoothingEnabled = false;
   drawCheckerboard(ctx, asset.width, asset.height, scale);
   const layers = layersForFrame(asset, options.frameId, options.activeLayerIds);
-  layers.forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, scale));
+  layers.forEach((layer) => {
+    if (options.movePreview && layer.id === options.movePreview.layerId) {
+      drawMovedPixelLayer(ctx, layer, asset.width, asset.height, scale, options.movePreview);
+    } else {
+      drawPixelLayer(ctx, layer, asset.width, asset.height, scale);
+    }
+  });
   if (options.grid && scale >= 8) {
     ctx.strokeStyle = "rgba(31, 41, 55, 0.16)";
     ctx.lineWidth = 1;
@@ -75,7 +116,7 @@ export const renderAsset = (
     }
   }
   if (options.selection) {
-    const selection = options.selection;
+    const selection = options.movePreview ? { ...options.movePreview.selection, x: options.movePreview.selection.x + options.movePreview.dx, y: options.movePreview.selection.y + options.movePreview.dy } : options.selection;
     ctx.strokeStyle = "#1b6ef3";
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);

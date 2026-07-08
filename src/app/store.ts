@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
 import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, importFileSystemProjectFolder, writeProjectToFileSystem } from "../projects/storage/fileSystem";
-import type { PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
+import type { MovePreview, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
   adjustColor,
@@ -60,6 +60,7 @@ type AppState = {
   zoom: number;
   showGrid: boolean;
   selection: Selection;
+  movePreview: MovePreview;
   clipboard: Clip | null;
   history: PixelProject[];
   future: PixelProject[];
@@ -265,6 +266,12 @@ const lassoBounds = (points: { x: number; y: number }[]): Selection => {
 const selectionContains = (selection: Selection, x: number, y: number) =>
   Boolean(selection && x >= selection.x && y >= selection.y && x < selection.x + selection.width && y < selection.y + selection.height);
 
+const clampedSelectionDelta = (asset: PixelAsset, selection: NonNullable<Selection>, dx: number, dy: number) => {
+  const targetX = Math.max(0, Math.min(asset.width - selection.width, selection.x + dx));
+  const targetY = Math.max(0, Math.min(asset.height - selection.height, selection.y + dy));
+  return { dx: targetX - selection.x, dy: targetY - selection.y };
+};
+
 const linePoints = (x0: number, y0: number, x1: number, y1: number) => {
   const points: { x: number; y: number }[] = [];
   let dx = Math.abs(x1 - x0);
@@ -440,6 +447,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoom: 12,
   showGrid: true,
   selection: null,
+  movePreview: null,
   clipboard: null,
   history: [],
   future: [],
@@ -474,6 +482,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeSceneId: project.scenes[0]?.id ?? null,
       history: [],
       future: [],
+      movePreview: null,
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,
@@ -496,6 +505,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeSceneId: project.scenes[0]?.id ?? null,
       history: [],
       future: [],
+      movePreview: null,
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,
@@ -588,6 +598,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeSceneId: project.scenes[0]?.id ?? null,
         history: [],
         future: [],
+        movePreview: null,
         saveStatus: "saved",
         lastSavedAt: project.updatedAt,
         saveError: null,
@@ -609,7 +620,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   setWorkspace: (workspace) => set({ workspace }),
-  setTool: (tool) => set({ tool }),
+  setTool: (tool) => set({ tool, movePreview: null, strokeStart: null, strokeLast: null, lassoMoveActive: false, lassoPoints: [] }),
   setTheme: (theme) => {
     localStorage.setItem("pixel-editor-theme", theme);
     set({ theme });
@@ -629,11 +640,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   beginStroke: (x, y) => {
     const state = get();
     const lassoMoveActive = state.tool === "lasso" && selectionContains(state.selection, x, y);
+    const movePreviewActive = (state.tool === "move" || lassoMoveActive) && state.selection && selectionContains(state.selection, x, y) && state.activeLayerId;
     set({
       strokeStart: { x, y },
       strokeLast: { x, y },
       lassoMoveActive,
       lassoPoints: state.tool === "lasso" && !lassoMoveActive ? [{ x, y }] : [],
+      movePreview: movePreviewActive ? { selection: state.selection!, dx: 0, dy: 0, layerId: state.activeLayerId! } : null,
       strokeHistoryBase: state.project && (mutatingPointerTools.includes(state.tool) || lassoMoveActive) ? state.project : null,
     });
   },
@@ -649,7 +662,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     if (state.tool === "select") {
-      set({ selection: { x, y, width: 1, height: 1 } });
+      const start = state.strokeStart ?? { x, y };
+      const left = Math.min(start.x, x);
+      const top = Math.min(start.y, y);
+      set({ selection: { x: left, y: top, width: Math.abs(x - start.x) + 1, height: Math.abs(y - start.y) + 1 } });
       return;
     }
     if (state.tool === "magic") {
@@ -658,12 +674,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     if (state.tool === "lasso") {
       if (state.lassoMoveActive) {
-        if (state.strokeLast) get().moveSelection(x - state.strokeLast.x, y - state.strokeLast.y);
-        set({ strokeLast: { x, y } });
+        if (state.strokeStart && state.movePreview) {
+          const delta = clampedSelectionDelta(asset, state.movePreview.selection, x - state.strokeStart.x, y - state.strokeStart.y);
+          set({ movePreview: { ...state.movePreview, ...delta }, strokeLast: { x, y } });
+        }
         return;
       }
       const points = [...state.lassoPoints, { x, y }];
       set({ lassoPoints: points, selection: lassoBounds(points) });
+      return;
+    }
+    if (state.tool === "move") {
+      if (state.strokeStart && state.movePreview) {
+        const delta = clampedSelectionDelta(asset, state.movePreview.selection, x - state.strokeStart.x, y - state.strokeStart.y);
+        set({ movePreview: { ...state.movePreview, ...delta }, strokeLast: { x, y } });
+      }
       return;
     }
     if (state.tool === "fill") {
@@ -715,16 +740,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     if (state.tool === "lasso") {
       if (state.lassoMoveActive) {
-        set({ lassoMoveActive: false, lassoPoints: [], strokeStart: null, strokeLast: null, strokeHistoryBase: null });
+        if (state.movePreview && (state.movePreview.dx || state.movePreview.dy)) get().moveSelection(state.movePreview.dx, state.movePreview.dy);
+        set({ lassoMoveActive: false, lassoPoints: [], movePreview: null, strokeStart: null, strokeLast: null, strokeHistoryBase: null });
         return;
       }
       const points = [...state.lassoPoints, { x, y }];
-      set({ selection: lassoBounds(points), lassoPoints: [], strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
+      set({ selection: lassoBounds(points), lassoPoints: [], movePreview: null, strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
       return;
     }
     if (state.tool === "move") {
-      if (state.selection) get().moveSelection(x - start.x, y - start.y);
-      set({ strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
+      if (state.movePreview && (state.movePreview.dx || state.movePreview.dy)) get().moveSelection(state.movePreview.dx, state.movePreview.dy);
+      set({ movePreview: null, strokeStart: null, strokeLast: null, lassoMoveActive: false, strokeHistoryBase: null });
       return;
     }
     const drawTools = ["line", "rect", "ellipse"];
@@ -747,6 +773,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       strokeStart: null,
       strokeLast: null,
       lassoMoveActive: false,
+      movePreview: null,
       strokeHistoryBase: null,
     });
   },
@@ -1036,7 +1063,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer) return;
     set({ selection: visiblePixelBounds(pixelsForLayer(asset, state.activeFrameId, layer), asset.width, asset.height) });
   },
-  deselect: () => set({ selection: null }),
+  deselect: () => set({ selection: null, movePreview: null }),
   deleteSelection: () => {
     const state = get();
     const asset = activeAsset(state);
@@ -1052,8 +1079,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const layer = activeLayer(state);
     const selection = state.selection;
     if (!asset || !layer || layer.locked || !selection || (!dx && !dy)) return;
-    const targetX = Math.max(0, Math.min(asset.width - selection.width, selection.x + dx));
-    const targetY = Math.max(0, Math.min(asset.height - selection.height, selection.y + dy));
+    const delta = clampedSelectionDelta(asset, selection, dx, dy);
+    const targetX = selection.x + delta.dx;
+    const targetY = selection.y + delta.dy;
     if (targetX === selection.x && targetY === selection.y) return;
     const nextSelection = { ...selection, x: targetX, y: targetY };
     set({
@@ -1073,6 +1101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }),
       state.strokeHistoryBase),
       selection: nextSelection,
+      movePreview: null,
     });
   },
   clearActiveLayer: () => {
@@ -1099,6 +1128,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       strokeStart: null,
       strokeLast: null,
       lassoMoveActive: false,
+      movePreview: null,
       strokeHistoryBase: null,
       saveStatus: "idle",
       saveError: null,
@@ -1116,6 +1146,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       strokeStart: null,
       strokeLast: null,
       lassoMoveActive: false,
+      movePreview: null,
       strokeHistoryBase: null,
       saveStatus: "idle",
       saveError: null,
@@ -1378,6 +1409,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeAssetId: project.assets[0]?.id ?? null,
       activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
       activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
+      activeTilesetId: project.tilesets[0]?.id ?? null,
+      activeSceneId: project.scenes[0]?.id ?? null,
+      history: [],
+      future: [],
+      movePreview: null,
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,

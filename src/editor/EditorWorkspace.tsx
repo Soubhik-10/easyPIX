@@ -93,6 +93,7 @@ export const EditorWorkspace = () => {
   const mirrorY = useAppStore((state) => state.mirrorY);
   const showGrid = useAppStore((state) => state.showGrid);
   const selection = useAppStore((state) => state.selection);
+  const movePreview = useAppStore((state) => state.movePreview);
   const clipboard = useAppStore((state) => state.clipboard);
   const activeFrameId = useAppStore((state) => state.activeFrameId);
   const [customColor, setCustomColor] = useState(color);
@@ -121,8 +122,8 @@ export const EditorWorkspace = () => {
   const selectedPreset = palettePresetById(palettePresetId) ?? palettePresets[0];
 
   useEffect(() => {
-    if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, frameId: activeFrameId });
-  }, [asset, zoom, showGrid, selection, activeFrameId]);
+    if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, movePreview, frameId: activeFrameId });
+  }, [asset, zoom, showGrid, selection, movePreview, activeFrameId]);
 
   const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>, options: { precision?: boolean } = {}) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -239,7 +240,7 @@ export const EditorWorkspace = () => {
       cancelPendingTouch();
       startStroke(start);
     }
-    if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken", "lasso"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
+    if (["pencil", "eraser", "shadow", "spray", "dither", "replace", "lighten", "darken", "lasso", "select", "move"].includes(tool)) useAppStore.getState().applyToolAt(point.x, point.y);
   };
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {

@@ -100,3 +100,10 @@ export type Selection = {
   width: number;
   height: number;
 } | null;
+
+export type MovePreview = {
+  selection: NonNullable<Selection>;
+  dx: number;
+  dy: number;
+  layerId: string;
+} | null;
