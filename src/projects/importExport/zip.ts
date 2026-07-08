@@ -87,6 +87,13 @@ export const importProjectZip = async (file: File) => {
   return JSON.parse(await projectFile.async("string")) as PixelProject;
 };
 
+export const importProjectFile = async (file: File) => {
+  if (file.name.toLowerCase().endsWith(".json") || file.type === "application/json") {
+    return JSON.parse(await file.text()) as PixelProject;
+  }
+  return importProjectZip(file);
+};
+
 export const downloadBlob = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

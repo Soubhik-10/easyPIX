@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, BookOpen, Download, FileJson, FolderOpen, Grid3X3, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
+import { AlertTriangle, BookOpen, Download, FileJson, FolderOpen, Grid3X3, HardDrive, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
 import { projectHealthWarnings, useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
 import { EditorWorkspace } from "../editor/EditorWorkspace";
@@ -20,6 +20,10 @@ export const App = () => {
   const saveStatus = useAppStore((state) => state.saveStatus);
   const lastSavedAt = useAppStore((state) => state.lastSavedAt);
   const saveError = useAppStore((state) => state.saveError);
+  const fileSaveSupported = useAppStore((state) => state.fileSaveSupported);
+  const fileSaveStatus = useAppStore((state) => state.fileSaveStatus);
+  const fileSaveFolderName = useAppStore((state) => state.fileSaveFolderName);
+  const fileSaveError = useAppStore((state) => state.fileSaveError);
   const canUndo = useAppStore((state) => state.history.length > 0);
   const canRedo = useAppStore((state) => state.future.length > 0);
   const activeAssetId = useAppStore((state) => state.activeAssetId);
@@ -194,6 +198,16 @@ export const App = () => {
   const activeAsset = project.assets.find((entry) => entry.id === activeAssetId) ?? project.assets[0];
   const activeFrame = activeAsset?.frames.find((entry) => entry.id === activeFrameId) ?? activeAsset?.frames[0];
   const healthWarnings = projectHealthWarnings(project);
+  const fileSaveLabel =
+    fileSaveStatus === "connected"
+      ? `Folder: ${fileSaveFolderName ?? "connected"}`
+      : fileSaveStatus === "saving"
+        ? "Folder saving..."
+        : fileSaveStatus === "error"
+          ? "Folder save failed"
+          : fileSaveSupported
+            ? "Browser-only"
+            : "Folder save unavailable";
 
   const exportActivePng = async () => {
     setExportStatus("exporting");
@@ -284,6 +298,12 @@ export const App = () => {
           <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"} title={saveError ?? "Local autosave status"}>
             {saveLabel}
           </span>
+          <button onClick={() => void useAppStore.getState().chooseProjectFolder()} disabled={!fileSaveSupported || fileSaveStatus === "saving"} title={fileSaveError ?? "Choose a real folder for Chrome/Edge autosave"}>
+            <HardDrive size={16} /> {fileSaveStatus === "connected" ? "Change folder" : "Choose folder"}
+          </button>
+          <span className={fileSaveStatus === "connected" ? "status-pill status-ok" : fileSaveStatus === "error" ? "status-pill status-error" : "status-pill status-warning"} title={fileSaveError ?? "Folder autosave protects work from browser storage cleanup"}>
+            {fileSaveLabel}
+          </span>
           <button onClick={() => void exportActivePng()} disabled={exportStatus === "exporting"} title={exportError ?? `Export active frame as crisp ${DEFAULT_PNG_EXPORT_SCALE}x PNG`}>
             <Download size={16} /> {exportStatus === "exporting" ? "Exporting" : `${DEFAULT_PNG_EXPORT_SCALE}x PNG`}
           </button>
@@ -320,6 +340,30 @@ export const App = () => {
           </button>
         </div>
       </header>
+      {fileSaveSupported && fileSaveStatus !== "connected" ? (
+        <section className={fileSaveStatus === "error" ? "file-save-banner file-save-error" : "file-save-banner"}>
+          <div>
+            <strong>{fileSaveStatus === "error" ? "Folder autosave needs attention" : "Protect this project with folder autosave"}</strong>
+            <span>
+              {fileSaveError ?? "Browser storage can be cleared by privacy tools, mobile cleanup, or browser resets. Choose a real folder so easyPIX also writes project.json to disk."}
+            </span>
+          </div>
+          <button className="primary-action" onClick={() => void useAppStore.getState().chooseProjectFolder()} disabled={fileSaveStatus === "saving"}>
+            <HardDrive size={16} /> {fileSaveStatus === "saving" ? "Connecting" : "Choose folder"}
+          </button>
+        </section>
+      ) : null}
+      {!fileSaveSupported ? (
+        <section className="file-save-banner file-save-warning">
+          <div>
+            <strong>Browser-only autosave</strong>
+            <span>Folder autosave is available in Chrome/Edge desktop. Use Project backup often on this browser.</span>
+          </div>
+          <button onClick={() => void exportProjectBundle()}>
+            <Download size={16} /> Download backup
+          </button>
+        </section>
+      ) : null}
       {workspace === "editor" && <EditorWorkspace />}
       {workspace === "import" && <ImportWorkspace />}
       {workspace === "palettes" && <PalettesWorkspace />}

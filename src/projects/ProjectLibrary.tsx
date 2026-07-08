@@ -1,7 +1,7 @@
 import { ChangeEvent, PointerEvent, useRef, useState } from "react";
 import { Eraser, FolderOpen, Grid3X3, Image, Import, LayoutGrid, Moon, Palette, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useAppStore } from "../app/store";
-import { importProjectZip } from "./importExport/zip";
+import { importProjectFile } from "./importExport/zip";
 import type { Workspace } from "./types";
 
 const quickStarts: Array<{
@@ -104,7 +104,7 @@ export const ProjectLibrary = () => {
   const onImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const project = await importProjectZip(file);
+    const project = await importProjectFile(file);
     await importProject(project);
     event.target.value = "";
   };
@@ -193,7 +193,7 @@ export const ProjectLibrary = () => {
               <button onClick={() => inputRef.current?.click()}>
                 <Import size={17} /> Import
               </button>
-              <input ref={inputRef} type="file" accept=".pixelzip,.zip" onChange={onImport} hidden />
+              <input ref={inputRef} type="file" accept=".pixelzip,.zip,.json,application/json" onChange={onImport} hidden />
             </div>
           </section>
 
@@ -236,7 +236,7 @@ export const ProjectLibrary = () => {
             <div className="empty-state compact-empty">
               <FolderOpen size={24} />
               <h2>No projects yet</h2>
-              <p>Create a project or import a .pixelzip bundle.</p>
+              <p>Create a project or import a .pixelzip backup or folder-saved project.json.</p>
             </div>
           )}
           <div className="recent-list">

@@ -105,7 +105,7 @@ canvas {
 
 .app-shell {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
 }
@@ -152,6 +152,10 @@ canvas {
 .workspace {
   min-height: 0;
   overflow: hidden;
+}
+
+.app-shell > .workspace {
+  grid-row: 3;
 }
 
 .library {
@@ -1119,6 +1123,11 @@ textarea {
     flex-wrap: wrap;
   }
 
+  .file-save-banner {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
   .tool-rail {
     flex-direction: row;
     border-right: 0;
@@ -1352,8 +1361,59 @@ button.active,
   background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
 }
 
+.status-warning {
+  border-color: color-mix(in srgb, #f59e0b 48%, var(--app-border));
+  color: color-mix(in srgb, #b45309 75%, var(--app-text));
+  background: color-mix(in srgb, #f59e0b 10%, var(--app-surface));
+}
+
+.status-ok {
+  border-color: color-mix(in srgb, #22c55e 45%, var(--app-border));
+  color: color-mix(in srgb, #16a34a 72%, var(--app-text));
+  background: color-mix(in srgb, #22c55e 10%, var(--app-surface));
+}
+
 .status-error-text {
   color: var(--app-danger);
+}
+
+.file-save-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 12px;
+  border-bottom: 1px solid color-mix(in srgb, #f59e0b 36%, var(--app-border));
+  color: var(--app-text);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #f59e0b 14%, var(--app-surface)), var(--app-surface));
+}
+
+.file-save-banner div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.file-save-banner strong {
+  font-size: 13px;
+}
+
+.file-save-banner span {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.file-save-error {
+  border-bottom-color: color-mix(in srgb, var(--app-danger) 36%, var(--app-border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--app-danger) 12%, var(--app-surface)), var(--app-surface));
+}
+
+.file-save-warning {
+  border-bottom-color: color-mix(in srgb, #60a5fa 36%, var(--app-border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #60a5fa 12%, var(--app-surface)), var(--app-surface));
 }
 
 .health-chip {

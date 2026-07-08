@@ -48,8 +48,13 @@ const manualSections = [
   },
   {
     icon: Download,
+    title: "Save Safety",
+    body: "Chrome/Edge desktop users can choose a real project folder. easyPIX still autosaves in the browser, but also writes project.json to that folder so work can be recovered if browser storage is cleared.",
+  },
+  {
+    icon: Download,
     title: "Export",
-    body: "PNG is the default export for finished art. Use .pixelzip only as a full editable project backup, plus tilesheet PNGs for tile sets and spritesheets for animations.",
+    body: "PNG is the default export for finished art. Use .pixelzip as a full editable project backup, and import either .pixelzip or a folder-saved project.json from the home screen.",
   },
 ];
 

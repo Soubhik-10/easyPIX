@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
+import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, writeProjectToFileSystem } from "../projects/storage/fileSystem";
 import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
@@ -27,6 +28,7 @@ import {
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type FileSaveStatus = "unsupported" | "disconnected" | "connected" | "saving" | "error";
 type SceneBrush = "asset" | "erase" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
 type SceneRotation = 0 | 90 | 180 | 270;
 
@@ -64,6 +66,10 @@ type AppState = {
   saveStatus: SaveStatus;
   lastSavedAt: string | null;
   saveError: string | null;
+  fileSaveSupported: boolean;
+  fileSaveStatus: FileSaveStatus;
+  fileSaveFolderName: string | null;
+  fileSaveError: string | null;
   isPlaying: boolean;
   onionSkin: boolean;
   fps: number;
@@ -77,6 +83,8 @@ type AppState = {
   openProject: (id: string) => Promise<void>;
   removeProject: (id: string) => Promise<void>;
   persist: () => Promise<void>;
+  chooseProjectFolder: () => Promise<void>;
+  disconnectProjectFolder: () => void;
   setWorkspace: (workspace: Workspace) => void;
   setTool: (tool: ToolId) => void;
   setTheme: (theme: ThemePreference) => void;
@@ -450,6 +458,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   saveStatus: "idle",
   lastSavedAt: null,
   saveError: null,
+  fileSaveSupported: fileSystemProjectSaveSupported(),
+  fileSaveStatus: fileSystemProjectSaveSupported() ? "disconnected" : "unsupported",
+  fileSaveFolderName: null,
+  fileSaveError: null,
   isPlaying: false,
   onionSkin: true,
   fps: 8,
@@ -462,6 +474,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshProjects: async () => set({ projects: await listProjects() }),
   createNewProject: async (name) => {
     const project = createProject(name || "New Pixel Project");
+    disconnectFileSystemProjectFolder();
     await saveProject(project);
     set({
       project,
@@ -476,11 +489,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,
+      fileSaveSupported: fileSystemProjectSaveSupported(),
+      fileSaveStatus: fileSystemProjectSaveSupported() ? "disconnected" : "unsupported",
+      fileSaveFolderName: null,
+      fileSaveError: null,
     });
   },
   openProject: async (id) => {
     const project = await loadProject(id);
     if (!project) return;
+    disconnectFileSystemProjectFolder();
     set({
       project,
       activeAssetId: project.assets[0]?.id ?? null,
@@ -493,6 +511,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,
+      fileSaveSupported: fileSystemProjectSaveSupported(),
+      fileSaveStatus: fileSystemProjectSaveSupported() ? "disconnected" : "unsupported",
+      fileSaveFolderName: null,
+      fileSaveError: null,
     });
   },
   removeProject: async (id) => {
@@ -505,11 +527,58 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ saveStatus: "saving", saveError: null });
     try {
       await saveProject(project);
-      set({ projects: await listProjects(), saveStatus: "saved", lastSavedAt: new Date().toISOString(), saveError: null });
+      const savedAt = new Date().toISOString();
+      const nextState: Partial<AppState> = { projects: await listProjects(), saveStatus: "saved", lastSavedAt: savedAt, saveError: null };
+      if (get().fileSaveStatus === "connected" || get().fileSaveStatus === "saving") {
+        try {
+          set({ fileSaveStatus: "saving", fileSaveError: null });
+          const fileState = await writeProjectToFileSystem(project);
+          nextState.fileSaveStatus = fileState?.connected ? "connected" : "disconnected";
+          nextState.fileSaveFolderName = fileState?.folderName ?? null;
+          nextState.fileSaveError = null;
+        } catch (error) {
+          nextState.fileSaveStatus = "error";
+          nextState.fileSaveError = error instanceof Error ? error.message : "Folder autosave failed";
+        }
+      }
+      set(nextState);
     } catch (error) {
       set({ saveStatus: "error", saveError: error instanceof Error ? error.message : "Save failed" });
       throw error;
     }
+  },
+  chooseProjectFolder: async () => {
+    const project = get().project;
+    if (!project) return;
+    if (!fileSystemProjectSaveSupported()) {
+      set({ fileSaveSupported: false, fileSaveStatus: "unsupported", fileSaveError: "Folder autosave needs Chrome or Edge on desktop." });
+      return;
+    }
+    set({ fileSaveSupported: true, fileSaveStatus: "saving", fileSaveError: null });
+    try {
+      const fileState = await chooseFileSystemProjectFolder(project);
+      set({ fileSaveStatus: "connected", fileSaveFolderName: fileState.folderName, fileSaveError: null });
+      await get().persist();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        set({ fileSaveStatus: "disconnected", fileSaveFolderName: null, fileSaveError: null });
+        return;
+      }
+      set({
+        fileSaveStatus: "error",
+        fileSaveFolderName: null,
+        fileSaveError: error instanceof Error ? error.message : "Could not connect project folder",
+      });
+    }
+  },
+  disconnectProjectFolder: () => {
+    disconnectFileSystemProjectFolder();
+    set({
+      fileSaveSupported: fileSystemProjectSaveSupported(),
+      fileSaveStatus: fileSystemProjectSaveSupported() ? "disconnected" : "unsupported",
+      fileSaveFolderName: null,
+      fileSaveError: null,
+    });
   },
   setWorkspace: (workspace) => set({ workspace }),
   setTool: (tool) => set({ tool }),
@@ -1273,6 +1342,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ sceneRotation: next[get().sceneRotation] });
   },
   importProject: async (project) => {
+    disconnectFileSystemProjectFolder();
     await saveProject(project);
     set({
       project,
@@ -1283,6 +1353,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       saveStatus: "saved",
       lastSavedAt: project.updatedAt,
       saveError: null,
+      fileSaveSupported: fileSystemProjectSaveSupported(),
+      fileSaveStatus: fileSystemProjectSaveSupported() ? "disconnected" : "unsupported",
+      fileSaveFolderName: null,
+      fileSaveError: null,
     });
   },
 }));
