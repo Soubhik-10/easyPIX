@@ -1,5 +1,5 @@
 import { ChangeEvent, PointerEvent, useRef, useState } from "react";
-import { Eraser, FolderOpen, Grid3X3, Image, Import, LayoutGrid, Moon, Palette, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Eraser, FolderOpen, Grid3X3, HardDrive, Image, Import, LayoutGrid, Moon, Palette, Play, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { importProjectFile } from "./importExport/zip";
 import type { Workspace } from "./types";
@@ -92,8 +92,12 @@ export const ProjectLibrary = () => {
   const openProject = useAppStore((state) => state.openProject);
   const removeProject = useAppStore((state) => state.removeProject);
   const importProject = useAppStore((state) => state.importProject);
+  const importProjectFolder = useAppStore((state) => state.importProjectFolder);
+  const fileSaveSupported = useAppStore((state) => state.fileSaveSupported);
+  const fileSaveError = useAppStore((state) => state.fileSaveError);
   const theme = useAppStore((state) => state.theme);
   const [name, setName] = useState("Untitled Pixel Project");
+  const [importError, setImportError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const start = async (workspace: Workspace) => {
@@ -104,9 +108,22 @@ export const ProjectLibrary = () => {
   const onImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const project = await importProjectFile(file);
-    await importProject(project);
-    event.target.value = "";
+    setImportError(null);
+    try {
+      const project = await importProjectFile(file);
+      await importProject(project);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Project import failed.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const onImportFolder = async () => {
+    setImportError(null);
+    await importProjectFolder();
+    const latestError = useAppStore.getState().fileSaveError;
+    if (latestError) setImportError(latestError);
   };
 
   return (
@@ -193,8 +210,12 @@ export const ProjectLibrary = () => {
               <button onClick={() => inputRef.current?.click()}>
                 <Import size={17} /> Import
               </button>
+              <button onClick={() => void onImportFolder()} disabled={!fileSaveSupported} title={fileSaveSupported ? "Import an easyPIX folder containing project.json" : "Folder import needs Chrome or Edge desktop"}>
+                <HardDrive size={17} /> Folder
+              </button>
               <input ref={inputRef} type="file" accept=".pixelzip,.zip,.json,application/json" onChange={onImport} hidden />
             </div>
+            {(importError || fileSaveError) && <p className="hint status-error-text">{importError ?? fileSaveError}</p>}
           </section>
 
           <section className="pixel-garden-panel" aria-label="Tiny pixel garden">

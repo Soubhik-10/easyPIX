@@ -5,6 +5,10 @@ type FileSaveState = {
   folderName: string | null;
 };
 
+type FolderProjectImport = FileSaveState & {
+  project: PixelProject;
+};
+
 let activeDirectory: FileSystemDirectoryHandle | null = null;
 
 export const fileSystemProjectSaveSupported = () =>
@@ -47,6 +51,27 @@ export const chooseFileSystemProjectFolder = async (project: PixelProject): Prom
   activeDirectory = directory;
   await writeProjectToFileSystem(project);
   return { connected: true, folderName: directory.name };
+};
+
+export const importFileSystemProjectFolder = async (): Promise<FolderProjectImport> => {
+  if (!fileSystemProjectSaveSupported()) {
+    throw new Error("Project folder import needs Chrome or Edge on desktop.");
+  }
+  const picker = window.showDirectoryPicker;
+  if (!picker) throw new Error("Folder picker is not available.");
+  const directory = await picker({
+    id: "easypix-project-folder",
+    mode: "readwrite",
+  });
+  const fileHandle = await directory.getFileHandle("project.json");
+  const file = await fileHandle.getFile();
+  const project = JSON.parse(await file.text()) as PixelProject;
+  if (!(await requestWritePermission(directory))) {
+    throw new Error("easyPIX needs write permission to keep autosaving to that folder.");
+  }
+  activeDirectory = directory;
+  await writeProjectToFileSystem(project);
+  return { connected: true, folderName: directory.name, project };
 };
 
 export const writeProjectToFileSystem = async (project: PixelProject) => {

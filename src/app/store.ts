@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
-import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, writeProjectToFileSystem } from "../projects/storage/fileSystem";
+import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, importFileSystemProjectFolder, writeProjectToFileSystem } from "../projects/storage/fileSystem";
 import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
@@ -85,6 +85,7 @@ type AppState = {
   persist: () => Promise<void>;
   chooseProjectFolder: () => Promise<void>;
   disconnectProjectFolder: () => void;
+  importProjectFolder: () => Promise<void>;
   setWorkspace: (workspace: Workspace) => void;
   setTool: (tool: ToolId) => void;
   setTheme: (theme: ThemePreference) => void;
@@ -579,6 +580,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       fileSaveFolderName: null,
       fileSaveError: null,
     });
+  },
+  importProjectFolder: async () => {
+    if (!fileSystemProjectSaveSupported()) {
+      set({ fileSaveSupported: false, fileSaveStatus: "unsupported", fileSaveError: "Project folder import needs Chrome or Edge on desktop." });
+      return;
+    }
+    set({ fileSaveSupported: true, fileSaveStatus: "saving", fileSaveError: null });
+    try {
+      const imported = await importFileSystemProjectFolder();
+      const project = imported.project;
+      await saveProject(project);
+      set({
+        project,
+        projects: await listProjects(),
+        activeAssetId: project.assets[0]?.id ?? null,
+        activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
+        activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
+        activeTilesetId: project.tilesets[0]?.id ?? null,
+        activeSceneId: project.scenes[0]?.id ?? null,
+        history: [],
+        future: [],
+        saveStatus: "saved",
+        lastSavedAt: project.updatedAt,
+        saveError: null,
+        fileSaveSupported: true,
+        fileSaveStatus: "connected",
+        fileSaveFolderName: imported.folderName,
+        fileSaveError: null,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        set({ fileSaveStatus: "disconnected", fileSaveFolderName: null, fileSaveError: null });
+        return;
+      }
+      set({
+        fileSaveStatus: "error",
+        fileSaveFolderName: null,
+        fileSaveError: error instanceof Error ? error.message : "Could not import project folder",
+      });
+    }
   },
   setWorkspace: (workspace) => set({ workspace }),
   setTool: (tool) => set({ tool }),

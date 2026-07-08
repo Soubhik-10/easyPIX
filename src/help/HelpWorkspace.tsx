@@ -49,7 +49,7 @@ const manualSections = [
   {
     icon: Download,
     title: "Save Safety",
-    body: "Chrome/Edge desktop users can choose a real project folder. easyPIX still autosaves in the browser, but also writes project.json to that folder so work can be recovered if browser storage is cleared.",
+    body: "Chrome/Edge desktop users can choose a real project folder. easyPIX still autosaves in the browser, but also writes project.json to that folder. From Home, use Folder import to reopen the whole protected folder.",
   },
   {
     icon: Download,

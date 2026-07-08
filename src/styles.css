@@ -112,7 +112,7 @@ canvas {
 
 .topbar {
   display: grid;
-  grid-template-columns: 220px 1fr auto;
+  grid-template-columns: minmax(150px, 220px) minmax(180px, 1fr) minmax(0, 1.4fr);
   align-items: center;
   gap: 14px;
   padding: 8px 12px;
@@ -142,6 +142,15 @@ canvas {
 
 .workspace-tabs {
   justify-content: center;
+  min-width: 0;
+}
+
+.topbar-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
 }
 
 .workspace-tabs button,
@@ -1269,7 +1278,7 @@ button.active,
 }
 
 .topbar {
-  grid-template-columns: minmax(178px, 220px) minmax(360px, 1fr) auto;
+  grid-template-columns: minmax(150px, 190px) minmax(240px, 0.8fr) minmax(0, 1.6fr);
   gap: 12px;
   padding: 9px 12px;
   border-color: var(--app-border);
@@ -1288,6 +1297,7 @@ button.active,
 
 .workspace-tabs {
   justify-content: center;
+  min-width: 0;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--app-border);
@@ -1295,6 +1305,20 @@ button.active,
   background: var(--app-surface-2);
   overflow-x: auto;
   scrollbar-width: thin;
+}
+
+.topbar-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.topbar-actions button,
+.topbar-actions select {
+  min-height: 32px;
+  padding-inline: 8px;
 }
 
 .workspace-tabs button {
@@ -1345,6 +1369,7 @@ button.active,
 .status-pill {
   display: inline-flex;
   align-items: center;
+  max-width: 168px;
   min-height: 30px;
   padding: 0 9px;
   border: 1px solid var(--app-border);
@@ -1352,6 +1377,8 @@ button.active,
   color: var(--app-muted);
   background: var(--app-surface);
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2267,7 +2294,7 @@ button.active,
 
 .project-name-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
 }
