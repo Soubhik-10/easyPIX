@@ -593,6 +593,19 @@ canvas {
   margin: 8px 0;
 }
 
+.resize-preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.resize-preset-row button {
+  justify-content: center;
+  min-width: 0;
+  padding-inline: 6px;
+}
+
 textarea {
   width: 100%;
   min-height: 62px;

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
 import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
 import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, importFileSystemProjectFolder, writeProjectToFileSystem } from "../projects/storage/fileSystem";
-import type { Palette, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
+import type { PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
   adjustColor,
@@ -328,19 +328,6 @@ const nearestColor = (color: string, palette: string[]) =>
 
 const remapPixelsToPalette = (pixels: string[], palette: string[]) =>
   pixels.map((pixel) => (!pixel || pixel === "transparent" || !validHex(pixel) || !palette.length ? pixel : nearestColor(normalizeHex(pixel), palette)));
-
-const usedColorsInProject = (project: PixelProject) => {
-  const colors = new Set<string>();
-  project.assets.forEach((asset) => {
-    asset.layers.forEach((layer) => layer.pixels.forEach((pixel) => {
-      if (validHex(pixel)) colors.add(normalizeHex(pixel));
-    }));
-    asset.frames.forEach((frame) => Object.values(frame.cels ?? {}).forEach((pixels) => pixels.forEach((pixel) => {
-      if (validHex(pixel)) colors.add(normalizeHex(pixel));
-    })));
-  });
-  return [...colors];
-};
 
 const buildPaletteRamp = (color: string) =>
   uniqueColors([adjustColor(color, -64), adjustColor(color, -36), adjustColor(color, -16), color, adjustColor(color, 20), adjustColor(color, 44), adjustColor(color, 68)]);
@@ -1402,23 +1389,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
-export const paletteWarnings = (palette: Palette) => {
-  const warnings: string[] = [];
-  const colors = uniqueColors(palette.colors);
-  const values = colors.map(luminance);
-  if (colors.length > 32) warnings.push("Large palettes can be harder to keep consistent. Consider using ramps for a smaller game-ready set.");
-  if (colors.length < 4) warnings.push("Add a few midtones and highlights for cleaner sprites.");
-  if (values.length && Math.min(...values) > 0.18) warnings.push("No true dark color yet. Add one for outlines, shadows, and readable silhouettes.");
-  if (values.length && Math.max(...values) < 0.82) warnings.push("No bright highlight yet. Add one for shine, sparkle, and UI readability.");
-  if (values.length > 1 && Math.max(...values) - Math.min(...values) < 0.42) warnings.push("Palette contrast is low, so sprites may look flat at 1x size.");
-  const hasNearDuplicate = colors.some((left, index) => colors.slice(index + 1).some((right) => channelDistance(left, right) < 18));
-  if (hasNearDuplicate) warnings.push("Some colors are almost identical. Merge near-duplicates unless you need a tiny texture step.");
-  return warnings;
-};
-
 export const projectHealthWarnings = (project: PixelProject) => {
   const warnings: string[] = [];
-  const activePalette = project.palettes[0];
   if (!project.assets.length) warnings.push("No drawable assets yet.");
   if (!project.tilesets.length) warnings.push("No tileset exists for tile checking.");
   if (!project.scenes.length) warnings.push("No sandbox scene exists for checking art in context.");
@@ -1437,11 +1409,5 @@ export const projectHealthWarnings = (project: PixelProject) => {
       });
     });
   });
-  if (activePalette) {
-    const paletteColors = new Set(uniqueColors(activePalette.colors));
-    const offPalette = usedColorsInProject(project).filter((color) => !paletteColors.has(color));
-    if (offPalette.length) warnings.push(`${offPalette.length} art color${offPalette.length === 1 ? "" : "s"} are outside the active palette.`);
-    warnings.push(...paletteWarnings(activePalette));
-  }
   return [...new Set(warnings)].slice(0, 12);
 };

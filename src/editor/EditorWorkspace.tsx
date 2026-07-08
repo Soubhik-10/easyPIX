@@ -1,4 +1,4 @@
-import { ChangeEvent, PointerEvent, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, PointerEvent, type CSSProperties, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
@@ -35,7 +35,7 @@ import {
   Upload,
   WandSparkles,
 } from "lucide-react";
-import { useAppStore, paletteWarnings } from "../app/store";
+import { useAppStore } from "../app/store";
 import { renderAsset } from "./canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetPng } from "../projects/importExport/zip";
 import { importPixelFiles, importSpritesheetAsAnimation } from "../projects/importExport/importers";
@@ -66,6 +66,7 @@ const rangeStyle = (value: number, min: number, max: number) =>
   ({ "--range-progress": `${Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))}%` }) as CSSProperties;
 
 const playfulTemplates: TemplateKind[] = ["grass", "flower", "water", "path", "tree", "bush", "rock", "coin", "hero"];
+const canvasPresets = [16, 24, 32, 48, 64, 96, 128];
 
 export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -118,7 +119,6 @@ export const EditorWorkspace = () => {
   const palette = project.palettes.find((entry) => entry.id === asset.paletteId) ?? project.palettes[0];
   const activeLayer = asset.layers.find((layer) => layer.id === activeLayerId) ?? asset.layers[0];
   const selectedPreset = palettePresetById(palettePresetId) ?? palettePresets[0];
-  const warnings = useMemo(() => (palette ? paletteWarnings(palette) : []), [palette]);
 
   useEffect(() => {
     if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, frameId: activeFrameId });
@@ -281,6 +281,14 @@ export const EditorWorkspace = () => {
     event.target.value = "";
   };
 
+  const resizeCanvasTo = (width: number, height = width) => {
+    const nextWidth = Math.max(1, Math.min(512, Math.round(width)));
+    const nextHeight = Math.max(1, Math.min(512, Math.round(height)));
+    setAssetWidth(nextWidth);
+    setAssetHeight(nextHeight);
+    useAppStore.getState().resizeActiveAsset(nextWidth, nextHeight);
+  };
+
   useEffect(() => () => {
     if (referenceUrl) URL.revokeObjectURL(referenceUrl);
   }, [referenceUrl]);
@@ -440,6 +448,15 @@ export const EditorWorkspace = () => {
             <button onClick={() => useAppStore.getState().duplicateAsset(asset.id)}><CopyPlus size={15} /> Duplicate</button>
             <button onClick={() => useAppStore.getState().resizeActiveAsset(assetWidth, assetHeight)}>Resize</button>
           </div>
+          <div className="resize-preset-row" aria-label="Canvas size presets">
+            <button onClick={() => resizeCanvasTo(asset.width * 2, asset.height * 2)}>2x</button>
+            {canvasPresets.map((size) => (
+              <button key={size} className={asset.width === size && asset.height === size ? "active" : ""} onClick={() => resizeCanvasTo(size)}>
+                {size}
+              </button>
+            ))}
+          </div>
+          <p className="hint">Resize keeps existing pixels in the top-left and expands or crops the canvas.</p>
           <div className="button-row">
             <button onClick={() => importRef.current?.click()}>
               <Upload size={15} /> Import
@@ -569,9 +586,6 @@ export const EditorWorkspace = () => {
             </button>
           </div>
           {paletteExportText ? <textarea readOnly value={paletteExportText} aria-label="Exported palette JSON" /> : null}
-          {warnings.map((warning) => (
-            <p className="hint" key={warning}>{warning}</p>
-          ))}
         </section>
         <section className="panel">
           <h2>Shortcuts</h2>

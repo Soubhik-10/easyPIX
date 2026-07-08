@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ExternalLink, FileJson, Palette, Plus, RefreshCw, Upload, WandSparkles } from "lucide-react";
 import { palettePresets, type PalettePreset } from "./presets";
-import { paletteWarnings, useAppStore } from "../app/store";
+import { useAppStore } from "../app/store";
 import { downloadBlob } from "../projects/importExport/zip";
 import { renderAsset } from "../editor/canvas/renderers";
 import type { PixelAsset } from "../projects/types";
@@ -37,7 +37,6 @@ export const PalettesWorkspace = () => {
   const [compareRight, setCompareRight] = useState(palettePresets[1]?.id ?? palettePresets[0]?.id ?? "");
   const activePalette = project.palettes[0];
   const activeAsset = project.assets.find((entry) => entry.id === useAppStore.getState().activeAssetId) ?? project.assets[0] ?? null;
-  const warnings = useMemo(() => paletteWarnings(activePalette), [activePalette]);
   const presets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return palettePresets.filter((preset) => {
@@ -97,9 +96,6 @@ export const PalettesWorkspace = () => {
             <Upload size={15} /> Import palette
           </button>
           {exportText ? <textarea readOnly value={exportText} aria-label="Exported palette JSON" /> : null}
-          {warnings.map((warning) => (
-            <p className="hint" key={warning}>{warning}</p>
-          ))}
         </aside>
 
         <main className="palette-browser">
