@@ -295,9 +295,11 @@ export const App = () => {
           <button onClick={() => void persist()} title="Save now">
             <Save size={16} /> Save
           </button>
-          <span className={saveStatus === "error" ? "status-pill status-error" : "status-pill"} title={saveError ?? "Local autosave status"}>
-            {saveLabel}
-          </span>
+          <span
+            className={saveStatus === "error" ? "save-indicator status-error" : saveStatus === "saved" ? "save-indicator status-ok" : "save-indicator"}
+            title={saveError ?? saveLabel}
+            aria-label={saveLabel}
+          />
           <button onClick={() => void useAppStore.getState().chooseProjectFolder()} disabled={!fileSaveSupported || fileSaveStatus === "saving"} title={fileSaveError ?? "Choose a real folder for Chrome/Edge autosave"}>
             <HardDrive size={16} /> {fileSaveStatus === "connected" ? "Change folder" : "Choose folder"}
           </button>
