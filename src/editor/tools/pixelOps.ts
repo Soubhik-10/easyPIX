@@ -259,6 +259,32 @@ export const copySelection = (layer: PixelLayer, width: number, selection: NonNu
   return { width: selection.width, height: selection.height, pixels };
 };
 
+export const trimClip = (clip: { width: number; height: number; pixels: string[] }) => {
+  let left = clip.width;
+  let right = -1;
+  let top = clip.height;
+  let bottom = -1;
+  clip.pixels.forEach((color, index) => {
+    if (!color || color === "transparent") return;
+    const x = index % clip.width;
+    const y = Math.floor(index / clip.width);
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+  });
+  if (right < left || bottom < top) return { width: 1, height: 1, pixels: ["transparent"] };
+  const width = right - left + 1;
+  const height = bottom - top + 1;
+  const pixels: string[] = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      pixels.push(clip.pixels[indexAt(left + x, top + y, clip.width)] ?? "transparent");
+    }
+  }
+  return { width, height, pixels };
+};
+
 export const pastePixels = (
   layer: PixelLayer,
   canvasWidth: number,

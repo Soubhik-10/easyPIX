@@ -74,6 +74,7 @@ export const EditorWorkspace = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasScrollRef = useRef<HTMLDivElement | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
+  const stickerImportRef = useRef<HTMLInputElement | null>(null);
   const referenceRef = useRef<HTMLInputElement | null>(null);
   const spritesheetRef = useRef<HTMLInputElement | null>(null);
   const activePointers = useRef(new Map<number, { x: number; y: number }>());
@@ -270,6 +271,14 @@ export const EditorWorkspace = () => {
     event.target.value = "";
   };
 
+  const onImportStickers = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) return;
+    const assets = await importPixelFiles(files);
+    if (assets.length) useAppStore.getState().addImportedAssetsAsStickers(assets);
+    event.target.value = "";
+  };
+
   const onReferenceImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -400,13 +409,16 @@ export const EditorWorkspace = () => {
           <button onClick={() => useAppStore.getState().clearActiveLayer()} title="Clear active layer on this frame">
             <Trash2 size={16} /> Clear canvas
           </button>
-          <button onClick={() => useAppStore.getState().flipSelectionX()} disabled={!clipboard} title="Flip copied pixels horizontally">
+          <button onClick={() => useAppStore.getState().flipSelectionX()} disabled={!selection && !clipboard} title="Flip selection, or copied pixels if nothing is selected">
             <FlipHorizontal size={16} />
           </button>
-          <button onClick={() => useAppStore.getState().flipSelectionY()} disabled={!clipboard} title="Flip copied pixels vertically">
+          <button onClick={() => useAppStore.getState().flipSelectionY()} disabled={!selection && !clipboard} title="Flip selection, or copied pixels if nothing is selected">
             <FlipVertical size={16} />
           </button>
-          <button onClick={() => useAppStore.getState().rotateSelection()} disabled={!clipboard} title="Rotate copied pixels">
+          <button onClick={() => useAppStore.getState().rotateSelection("ccw")} disabled={!selection && !clipboard} title="Rotate selection left">
+            <RotateCcw size={16} />
+          </button>
+          <button onClick={() => useAppStore.getState().rotateSelection("cw")} disabled={!selection && !clipboard} title="Rotate selection right">
             <RotateCw size={16} />
           </button>
         </div>
@@ -475,8 +487,12 @@ export const EditorWorkspace = () => {
               <Upload size={15} /> Import
             </button>
             <input ref={importRef} type="file" multiple hidden accept=".png,.piskel,.json,image/png,application/json" onChange={onImportAssets} />
+            <button onClick={() => stickerImportRef.current?.click()} title="Trim transparent padding and place PNGs on the current drawing">
+              <Upload size={15} /> Sticker
+            </button>
+            <input ref={stickerImportRef} type="file" multiple hidden accept=".png,image/png" onChange={onImportStickers} />
           </div>
-          <p className="hint">Imports PNG, Piskel .piskel, and Aseprite JSON with its spritesheet PNG selected together.</p>
+          <p className="hint">Import creates assets. Sticker trims PNG padding and places art on this canvas as a movable layer.</p>
           <div className="compact-grid">
             <input type="number" min="1" max="512" value={sliceWidth} onChange={(event) => setSliceWidth(Number(event.target.value))} aria-label="Spritesheet frame width" />
             <input type="number" min="1" max="512" value={sliceHeight} onChange={(event) => setSliceHeight(Number(event.target.value))} aria-label="Spritesheet frame height" />

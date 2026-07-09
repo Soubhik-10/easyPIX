@@ -25,6 +25,7 @@ import {
   rotatePixels,
   setPixel,
   sprayBrush,
+  trimClip,
 } from "../editor/tools/pixelOps";
 import { drawPixelText, measurePixelText } from "../editor/tools/pixelFont";
 
@@ -113,6 +114,7 @@ type AppState = {
   addTemplateAsset: (kind: TemplateKind) => void;
   addAssetToTileset: (assetId: string) => void;
   addImportedAssets: (assets: PixelAsset[]) => void;
+  addImportedAssetsAsStickers: (assets: PixelAsset[]) => void;
   duplicateAsset: (id: string) => void;
   resizeActiveAsset: (width: number, height: number) => void;
   rotateActiveAsset: (direction: "cw" | "ccw") => void;
@@ -135,7 +137,7 @@ type AppState = {
   addPixelText: (text: string, scale: number) => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
-  rotateSelection: () => void;
+  rotateSelection: (direction?: "cw" | "ccw") => void;
   undo: () => void;
   redo: () => void;
   addPaletteColor: (color: string) => void;
@@ -422,6 +424,13 @@ const visiblePixelBounds = (pixels: string[], width: number, height: number): Se
   if (right < left || bottom < top) return null;
   return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 };
+
+const selectionAfterClip = (asset: PixelAsset, x: number, y: number, clip: Clip): NonNullable<Selection> => ({
+  x: Math.max(0, Math.min(asset.width - 1, x)),
+  y: Math.max(0, Math.min(asset.height - 1, y)),
+  width: Math.max(1, Math.min(clip.width, asset.width - Math.max(0, Math.min(asset.width - 1, x)))),
+  height: Math.max(1, Math.min(clip.height, asset.height - Math.max(0, Math.min(asset.height - 1, y)))),
+});
 
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
@@ -851,6 +860,48 @@ export const useAppStore = create<AppState>((set, get) => ({
         };
       }),
     ),
+  addImportedAssetsAsStickers: (assets) => {
+    const state = get();
+    const target = activeAsset(state);
+    if (!target) return get().addImportedAssets(assets);
+    const stickers = assets.map((source) => ({
+      source,
+      clip: trimClip({ width: source.width, height: source.height, pixels: compositeAssetPixels(source, source.frames[0]?.id) }),
+    }));
+    let lastLayerId: string | null = null;
+    let lastSelection: NonNullable<Selection> | null = null;
+    set(
+      withProject(state, (project) =>
+        updateActiveAsset(project, state.activeAssetId, (asset) => {
+          let nextAsset = asset;
+          stickers.forEach(({ source, clip }, index) => {
+            const layer = createLayer(`${source.name} Sticker`, asset.width, asset.height);
+            const baseX = state.selection?.x ?? Math.max(0, Math.floor((asset.width - clip.width) / 2));
+            const baseY = state.selection?.y ?? Math.max(0, Math.floor((asset.height - clip.height) / 2));
+            const x = Math.min(asset.width - 1, Math.max(0, baseX + index));
+            const y = Math.min(asset.height - 1, Math.max(0, baseY + index));
+            const pixels = pastePixels(layer, asset.width, asset.height, x, y, clip);
+            lastLayerId = layer.id;
+            lastSelection = selectionAfterClip(asset, x, y, clip);
+            nextAsset = {
+              ...nextAsset,
+              layers: [...nextAsset.layers, { ...layer, pixels }],
+              frames: nextAsset.frames.map((frame, frameIndex) => {
+                const activeFrame = frame.id === state.activeFrameId || (!state.activeFrameId && frameIndex === 0);
+                return {
+                  ...frame,
+                  layerIds: [...new Set([...frame.layerIds, layer.id])],
+                  cels: { ...(frame.cels ?? {}), [layer.id]: activeFrame ? pixels : [...layer.pixels] },
+                };
+              }),
+            };
+          });
+          return nextAsset;
+        }),
+      ),
+    );
+    setTimeout(() => set({ activeLayerId: lastLayerId, selection: lastSelection, tool: "move", movePreview: null }), 0);
+  },
   duplicateAsset: (id) =>
     set(
       withProject(get(), (project) => {
@@ -1069,14 +1120,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer || !state.clipboard) return;
     const x = state.selection?.x ?? 0;
     const y = state.selection?.y ?? 0;
-    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
-      ...setFrameLayerPixels(
-        entry,
-        state.activeFrameId,
-        layer.id,
-        pastePixels({ ...layer, pixels: pixelsForLayer(entry, state.activeFrameId, layer) }, entry.width, entry.height, x, y, state.clipboard!),
-      ),
-    }))));
+    set({
+      ...withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+        ...setFrameLayerPixels(
+          entry,
+          state.activeFrameId,
+          layer.id,
+          pastePixels({ ...layer, pixels: pixelsForLayer(entry, state.activeFrameId, layer) }, entry.width, entry.height, x, y, state.clipboard!),
+        ),
+      }))),
+      selection: selectionAfterClip(asset, x, y, state.clipboard),
+      movePreview: null,
+    });
   },
   selectAll: () => {
     const asset = activeAsset(get());
@@ -1170,9 +1225,52 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))));
     setTimeout(() => set({ activeLayerId: textLayer.id, selection, tool: "move", movePreview: null }), 0);
   },
-  flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),
-  flipSelectionY: () => set({ clipboard: get().clipboard ? flipClipY(get().clipboard!) : get().clipboard }),
-  rotateSelection: () => set({ clipboard: get().clipboard ? rotateClip(get().clipboard!) : get().clipboard }),
+  flipSelectionX: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked || !state.selection) return set({ clipboard: state.clipboard ? flipClipX(state.clipboard) : state.clipboard });
+    const selection = state.selection;
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => {
+      const currentPixels = pixelsForLayer(entry, state.activeFrameId, layer);
+      const clip = flipClipX(copySelection({ ...layer, pixels: currentPixels }, entry.width, selection));
+      const cleared = clearSelectionPixels(currentPixels, entry.width, selection);
+      return { ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, pastePixels({ ...layer, pixels: cleared }, entry.width, entry.height, selection.x, selection.y, clip)) };
+    })));
+  },
+  flipSelectionY: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked || !state.selection) return set({ clipboard: state.clipboard ? flipClipY(state.clipboard) : state.clipboard });
+    const selection = state.selection;
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => {
+      const currentPixels = pixelsForLayer(entry, state.activeFrameId, layer);
+      const clip = flipClipY(copySelection({ ...layer, pixels: currentPixels }, entry.width, selection));
+      const cleared = clearSelectionPixels(currentPixels, entry.width, selection);
+      return { ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, pastePixels({ ...layer, pixels: cleared }, entry.width, entry.height, selection.x, selection.y, clip)) };
+    })));
+  },
+  rotateSelection: (direction = "cw") => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked || !state.selection) {
+      const clip = state.clipboard ? (direction === "cw" ? rotateClip(state.clipboard) : rotateClip(rotateClip(rotateClip(state.clipboard)))) : state.clipboard;
+      return set({ clipboard: clip });
+    }
+    const selection = state.selection;
+    let nextSelection = selection;
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => {
+      const currentPixels = pixelsForLayer(entry, state.activeFrameId, layer);
+      const sourceClip = copySelection({ ...layer, pixels: currentPixels }, entry.width, selection);
+      const clip = direction === "cw" ? rotateClip(sourceClip) : rotateClip(rotateClip(rotateClip(sourceClip)));
+      const cleared = clearSelectionPixels(currentPixels, entry.width, selection);
+      nextSelection = selectionAfterClip(entry, selection.x, selection.y, clip);
+      return { ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, pastePixels({ ...layer, pixels: cleared }, entry.width, entry.height, selection.x, selection.y, clip)) };
+    })));
+    set({ selection: nextSelection, movePreview: null });
+  },
   undo: () => {
     const state = get();
     const previous = state.history[0];
