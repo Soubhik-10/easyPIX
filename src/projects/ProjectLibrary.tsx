@@ -237,9 +237,7 @@ export const ProjectLibrary = () => {
                 <span key={`${kind}-${index}`} className={`garden-plant ${kind}`} />
               ))}
             </div>
-            <div className="pixel-garden-sign">
-              <span>local files</span>
-            </div>
+            <div className="pixel-garden-sign" aria-hidden="true" />
             <div className="pixel-garden-tools" aria-hidden="true">
               <i />
               <i />
