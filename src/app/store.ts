@@ -1366,11 +1366,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearActiveLayer: () => {
     const state = get();
     const asset = activeAsset(state);
-    const layer = activeLayer(state);
-    if (!asset || !layer || layer.locked) return;
-    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
-      ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, Array.from({ length: entry.width * entry.height }, () => "transparent")),
-    }))));
+    if (!asset) return;
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => {
+      const blankPixels = Array.from({ length: entry.width * entry.height }, () => "transparent");
+      return {
+        ...entry,
+        layers: entry.layers.map((layer) => ({ ...layer, pixels: layer.locked ? layer.pixels : [...blankPixels] })),
+        frames: entry.frames.map((frame, index) => {
+          const isActiveFrame = frame.id === state.activeFrameId || (!state.activeFrameId && index === 0);
+          if (!isActiveFrame) return frame;
+          return {
+            ...frame,
+            cels: {
+              ...(frame.cels ?? {}),
+              ...Object.fromEntries(entry.layers.filter((layer) => !layer.locked).map((layer) => [layer.id, [...blankPixels]])),
+            },
+          };
+        }),
+      };
+    })));
   },
   addPixelText: (text, scale, textColor) => {
     const state = get();
