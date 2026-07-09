@@ -2968,6 +2968,19 @@ button.active,
   font-size: 12px;
 }
 
+.animation-recipe-box {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-panel) 84%, var(--app-accent) 16%);
+}
+
+.animation-recipe-box strong {
+  font-size: 13px;
+}
+
 .help-layout {
   display: grid;
   grid-template-rows: auto 1fr auto;

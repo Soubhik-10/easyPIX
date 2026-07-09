@@ -192,6 +192,15 @@ export const AnimationWorkspace = () => {
           <Plus size={16} /> Add frame
         </button>
         <button onClick={() => useAppStore.getState().duplicateFrame()}><CopyPlus size={16} /> Duplicate frame</button>
+        <div className="animation-recipe-box">
+          <strong>Animation Recipe Wizard</strong>
+          <div className="animation-preset-row" aria-label="Walk cycle recipes">
+            <button onClick={() => useAppStore.getState().makeWalkCycle(4)}>Walk 4</button>
+            <button onClick={() => useAppStore.getState().makeWalkCycle(6)}>Walk 6</button>
+            <button onClick={() => useAppStore.getState().makeWalkCycle(8)}>Walk 8</button>
+          </div>
+          <p className="hint">Creates labeled walk frames with editable ghost guides: left foot, passing pose, right foot.</p>
+        </div>
         {activeFrame ? (
           <button onClick={() => drawFrame(activeFrame.id)}>
             <Edit3 size={16} /> Draw selected frame

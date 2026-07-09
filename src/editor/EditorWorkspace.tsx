@@ -557,6 +557,22 @@ export const EditorWorkspace = () => {
           {copyPngStatus ? <p className="hint">{copyPngStatus}</p> : null}
         </section>
         <section className="panel">
+          <h2><WandSparkles size={16} /> Fix My Sprite</h2>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().fixSprite("outline")}>Add outline</button>
+            <button onClick={() => useAppStore.getState().fixSprite("shadow")}>Add shadow</button>
+          </div>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().fixSprite("highlight")}>Add highlight</button>
+            <button onClick={() => useAppStore.getState().fixSprite("contrast")}>Increase contrast</button>
+          </div>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().fixSprite("center-feet")}>Center feet</button>
+            <button onClick={() => useAppStore.getState().fixSprite("readable")}>Readable 1x</button>
+          </div>
+          <p className="hint">Applies simple beginner fixes to the active frame/layer. Center feet aligns the whole asset for Godot-style character pivots.</p>
+        </section>
+        <section className="panel">
           <h2><Eye size={16} /> Reference</h2>
           <div className="button-row">
             <button onClick={() => referenceRef.current?.click()}><Upload size={15} /> Reference image</button>

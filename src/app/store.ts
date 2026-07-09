@@ -142,6 +142,7 @@ type AppState = {
   moveSelection: (dx: number, dy: number) => void;
   clearActiveLayer: () => void;
   addPixelText: (text: string, scale: number) => void;
+  fixSprite: (fix: "outline" | "shadow" | "highlight" | "contrast" | "center-feet" | "readable") => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
   rotateSelection: (direction?: "cw" | "ccw") => void;
@@ -160,6 +161,7 @@ type AppState = {
   remapColor: (from: string, to: string) => void;
   remapArtToPalette: (paletteId?: string) => void;
   addFrame: () => void;
+  makeWalkCycle: (frameCount: 4 | 6 | 8) => void;
   duplicateFrame: () => void;
   addAssetAsFrame: (sourceAssetId: string) => void;
   removeFrame: (id: string) => void;
@@ -440,6 +442,102 @@ const visiblePixelBounds = (pixels: string[], width: number, height: number): Se
   });
   if (right < left || bottom < top) return null;
   return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+};
+
+const edgePixels = (pixels: string[], width: number, height: number) => {
+  const edges = new Set<number>();
+  pixels.forEach((color, index) => {
+    if (!color || color === "transparent") return;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    if (neighbors.some(([dx, dy]) => {
+      const nx = x + dx;
+      const ny = y + dy;
+      return nx < 0 || ny < 0 || nx >= width || ny >= height || pixels[ny * width + nx] === "transparent";
+    })) edges.add(index);
+  });
+  return edges;
+};
+
+const outlinePixels = (pixels: string[], width: number, height: number, color = "#111827") => {
+  let next = [...pixels];
+  pixels.forEach((pixel, index) => {
+    if (!pixel || pixel === "transparent") return;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
+      const target = ny * width + nx;
+      if (pixels[target] === "transparent") next[target] = color;
+    });
+  });
+  return next;
+};
+
+const shadowPixels = (pixels: string[], width: number, height: number) => {
+  let next = [...pixels];
+  pixels.forEach((pixel, index) => {
+    if (!pixel || pixel === "transparent") return;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const sx = x + 1;
+    const sy = y + 1;
+    if (sx < width && sy < height && next[sy * width + sx] === "transparent") next[sy * width + sx] = "#2f2a3d";
+  });
+  return next;
+};
+
+const highlightPixels = (pixels: string[], width: number, height: number) => {
+  const edges = edgePixels(pixels, width, height);
+  return pixels.map((color, index) => {
+    if (!edges.has(index) || !color || color === "transparent") return color;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const exposedTopLeft =
+      x === 0 || y === 0 || pixels[y * width + Math.max(0, x - 1)] === "transparent" || pixels[Math.max(0, y - 1) * width + x] === "transparent";
+    return exposedTopLeft ? adjustColor(color, 36) : color;
+  });
+};
+
+const contrastPixels = (pixels: string[]) =>
+  pixels.map((color) => {
+    if (!color || color === "transparent") return color;
+    const value = Number.parseInt(color.slice(1), 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    const luma = (r + g + b) / 3;
+    return adjustColor(color, luma >= 128 ? 22 : -22);
+  });
+
+const walkGuidePixels = (width: number, height: number, frameIndex: number, frameCount: number) => {
+  let pixels = Array.from({ length: width * height }, () => "transparent");
+  const cx = Math.floor(width / 2);
+  const ground = Math.max(2, height - 3);
+  const headY = Math.max(2, Math.floor(height * 0.28));
+  const bodyTop = Math.min(ground - 5, headY + 3);
+  const phase = (frameIndex / frameCount) * Math.PI * 2;
+  const left = Math.round(Math.sin(phase) * 2);
+  const right = Math.round(Math.sin(phase + Math.PI) * 2);
+  const guide = (x: number, y: number, color: string) => {
+    pixels = setPixel(pixels, width, height, x, y, color);
+  };
+  for (let y = bodyTop; y <= ground - 3; y += 1) guide(cx, y, "#6ea8ff");
+  guide(cx, headY, "#6ea8ff");
+  guide(cx - 1, headY + 1, "#6ea8ff");
+  guide(cx, headY + 1, "#6ea8ff");
+  guide(cx + 1, headY + 1, "#6ea8ff");
+  for (let x = cx - 4; x <= cx + 4; x += 1) guide(x, ground, "#9aa7bd");
+  guide(cx - 1, ground - 2, "#f97316");
+  guide(cx - 1 + left, ground - 1, "#f97316");
+  guide(cx - 1 + left, ground, "#f97316");
+  guide(cx + 1, ground - 2, "#22c55e");
+  guide(cx + 1 + right, ground - 1, "#22c55e");
+  guide(cx + 1 + right, ground, "#22c55e");
+  return pixels;
 };
 
 const selectionAfterClip = (asset: PixelAsset, x: number, y: number, clip: Clip): NonNullable<Selection> => ({
@@ -1305,6 +1403,44 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))));
     setTimeout(() => set({ activeLayerId: textLayer.id, selection, tool: "move", movePreview: null }), 0);
   },
+  fixSprite: (fix) => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    if (!asset || !layer || layer.locked) return;
+    if (fix === "center-feet") {
+      const bounds = visiblePixelBounds(compositeAssetPixels(asset, state.activeFrameId), asset.width, asset.height);
+      if (!bounds) return;
+      const dx = Math.round(asset.width / 2 - (bounds.x + bounds.width / 2));
+      const dy = asset.height - 2 - (bounds.y + bounds.height - 1);
+      set({
+        ...withProject(state, (project) =>
+          updateActiveAsset(project, state.activeAssetId, (entry) => ({
+            ...mapAssetPixels(entry, (pixels) => offsetPixels(pixels, entry.width, entry.height, dx, dy)),
+            pivot: { x: Math.floor(entry.width / 2), y: entry.height - 1 },
+          })),
+        ),
+        selection: null,
+        movePreview: null,
+      });
+      return;
+    }
+    const recipe = (pixels: string[], width: number, height: number) => {
+      if (fix === "outline") return outlinePixels(pixels, width, height);
+      if (fix === "shadow") return shadowPixels(pixels, width, height);
+      if (fix === "highlight") return highlightPixels(pixels, width, height);
+      if (fix === "contrast") return contrastPixels(pixels);
+      return outlinePixels(contrastPixels(highlightPixels(pixels, width, height)), width, height);
+    };
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(
+        entry,
+        state.activeFrameId,
+        layer.id,
+        recipe(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height),
+      ),
+    }))));
+  },
   flipSelectionX: () => {
     const state = get();
     const asset = activeAsset(state);
@@ -1503,6 +1639,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       setTimeout(() => set({ activeFrameId: frame.id }), 0);
       return { ...asset, frames: [...asset.frames, frame] };
+    }))),
+  makeWalkCycle: (frameCount) =>
+    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
+      const guideLayer = { ...createLayer("Walk Guide", asset.width, asset.height), opacity: 0.62 };
+      const baseFrame = asset.frames.find((frame) => frame.id === get().activeFrameId) ?? asset.frames[0];
+      const baseCels = Object.fromEntries(asset.layers.map((layer) => [layer.id, [...pixelsForLayer(asset, baseFrame?.id ?? null, layer)]]));
+      const labels =
+        frameCount === 4
+          ? ["Left foot forward", "Passing pose", "Right foot forward", "Passing pose"]
+          : frameCount === 6
+            ? ["Left contact", "Left down", "Passing", "Right contact", "Right down", "Passing"]
+            : ["Left contact", "Left down", "Passing", "Left up", "Right contact", "Right down", "Passing", "Right up"];
+      const frames = labels.map((label, index) => ({
+        id: uid("frame"),
+        name: label,
+        durationMs: 120,
+        tags: ["walk"],
+        layerIds: [...asset.layers.map((layer) => layer.id), guideLayer.id],
+        cels: {
+          ...baseCels,
+          [guideLayer.id]: walkGuidePixels(asset.width, asset.height, index, frameCount),
+        },
+      }));
+      setTimeout(() => set({ activeLayerId: guideLayer.id, activeFrameId: frames[0]?.id ?? null, onionSkin: true, workspace: "animation" }), 0);
+      return {
+        ...asset,
+        pivot: { x: Math.floor(asset.width / 2), y: asset.height - 1 },
+        layers: [...asset.layers, guideLayer],
+        frames,
+      };
     }))),
   duplicateFrame: () =>
     set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
