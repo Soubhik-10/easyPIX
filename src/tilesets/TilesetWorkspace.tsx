@@ -30,9 +30,13 @@ export const TilesetWorkspace = () => {
         <h2>Tiles</h2>
         <button onClick={() => useAppStore.getState().addAsset()}>Add tile asset</button>
         <button onClick={() => useAppStore.getState().addAssetToTileset(activeAsset.id)}>Add active to tileset</button>
+        <button onClick={() => project.assets.forEach((asset) => useAppStore.getState().addAssetToTileset(asset.id))}>
+          Add all project sprites
+        </button>
+        <p className="hint">Yes: Tile Check can use any sprite from this project. Add one or all, then preview repeats and seams.</p>
         {project.assets.map((asset) => (
           <button key={asset.id} className={asset.id === activeAssetId ? "active asset-row" : "asset-row"} onClick={() => useAppStore.getState().selectAsset(asset.id)}>
-            {asset.name}
+            {asset.name}{tileset.assetIds.includes(asset.id) ? " · in tileset" : ""}
           </button>
         ))}
       </aside>

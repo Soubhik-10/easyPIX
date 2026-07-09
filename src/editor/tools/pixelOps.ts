@@ -91,6 +91,39 @@ export const resizePixels = (pixels: string[], oldWidth: number, oldHeight: numb
     return pixels[y * oldWidth + x] ?? "transparent";
   });
 
+export const cropPixels = (pixels: string[], sourceWidth: number, x: number, y: number, width: number, height: number) =>
+  Array.from({ length: width * height }, (_, index) => {
+    const xx = index % width;
+    const yy = Math.floor(index / width);
+    return pixels[indexAt(x + xx, y + yy, sourceWidth)] ?? "transparent";
+  });
+
+export const offsetPixels = (pixels: string[], width: number, height: number, dx: number, dy: number) => {
+  const next = Array.from({ length: width * height }, () => "transparent");
+  pixels.forEach((color, index) => {
+    if (!color || color === "transparent") return;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < width && ny < height) next[indexAt(nx, ny, width)] = color;
+  });
+  return next;
+};
+
+export const padPixels = (pixels: string[], oldWidth: number, oldHeight: number, padding: number) => {
+  const nextWidth = oldWidth + padding * 2;
+  const nextHeight = oldHeight + padding * 2;
+  const next = Array.from({ length: nextWidth * nextHeight }, () => "transparent");
+  pixels.forEach((color, index) => {
+    if (!color || color === "transparent") return;
+    const x = index % oldWidth;
+    const y = Math.floor(index / oldWidth);
+    next[indexAt(x + padding, y + padding, nextWidth)] = color;
+  });
+  return next;
+};
+
 export const clearSelectionPixels = (pixels: string[], width: number, selection: NonNullable<Selection>) => {
   const next = [...pixels];
   for (let y = 0; y < selection.height; y += 1) {

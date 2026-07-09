@@ -8,6 +8,7 @@ import {
   adjustColor,
   clearSelectionPixels,
   copySelection,
+  cropPixels,
   ditherBrush,
   drawBrush,
   drawEllipse,
@@ -17,6 +18,8 @@ import {
   flipClipY,
   floodFill,
   magicWandSelection,
+  offsetPixels,
+  padPixels,
   pastePixels,
   pixelPerfectPoints,
   replaceColor,
@@ -118,6 +121,10 @@ type AppState = {
   duplicateAsset: (id: string) => void;
   resizeActiveAsset: (width: number, height: number) => void;
   rotateActiveAsset: (direction: "cw" | "ccw") => void;
+  trimActiveAsset: () => void;
+  centerActiveArt: () => void;
+  padActiveAsset: (padding: number) => void;
+  setActiveAssetPivot: (preset: "center" | "bottom" | "bottom-left" | "top-left") => void;
   renameAsset: (id: string, name: string) => void;
   addLayer: () => void;
   updateLayer: (id: string, patch: Partial<PixelLayer>) => void;
@@ -158,6 +165,7 @@ type AppState = {
   removeFrame: (id: string) => void;
   moveFrame: (id: string, direction: -1 | 1) => void;
   setFrameDuration: (id: string, durationMs: number) => void;
+  setFrameTags: (id: string, tags: string[]) => void;
   setActiveFrame: (id: string) => void;
   togglePlayback: () => void;
   toggleOnionSkin: () => void;
@@ -208,6 +216,15 @@ const setFrameLayerPixels = (asset: PixelAsset, frameId: string | null, layerId:
       ? { ...frame, cels: { ...(frame.cels ?? {}), [layerId]: pixels } }
       : frame,
   ),
+});
+
+const mapAssetPixels = (asset: PixelAsset, recipe: (pixels: string[]) => string[]) => ({
+  ...asset,
+  layers: asset.layers.map((layer) => ({ ...layer, pixels: recipe(layer.pixels) })),
+  frames: asset.frames.map((frame) => ({
+    ...frame,
+    cels: Object.fromEntries(Object.entries(frame.cels ?? {}).map(([layerId, pixels]) => [layerId, recipe(pixels)])),
+  })),
 });
 
 const restoredIds = (snapshot: PixelProject, state: AppState) => {
@@ -980,6 +997,69 @@ export const useAppStore = create<AppState>((set, get) => ({
       selection: null,
       movePreview: null,
     }),
+  trimActiveAsset: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    if (!asset) return;
+    const bounds = visiblePixelBounds(compositeAssetPixels(asset, state.activeFrameId), asset.width, asset.height);
+    if (!bounds) return;
+    set({
+      ...withProject(state, (project) =>
+        updateActiveAsset(project, state.activeAssetId, (entry) => ({
+          ...mapAssetPixels(entry, (pixels) => cropPixels(pixels, entry.width, bounds.x, bounds.y, bounds.width, bounds.height)),
+          width: bounds.width,
+          height: bounds.height,
+          pivot: entry.pivot ? { x: Math.max(0, entry.pivot.x - bounds.x), y: Math.max(0, entry.pivot.y - bounds.y) } : undefined,
+        })),
+      ),
+      selection: null,
+      movePreview: null,
+    });
+  },
+  centerActiveArt: () => {
+    const state = get();
+    const asset = activeAsset(state);
+    if (!asset) return;
+    const bounds = visiblePixelBounds(compositeAssetPixels(asset, state.activeFrameId), asset.width, asset.height);
+    if (!bounds) return;
+    const dx = Math.round((asset.width - bounds.width) / 2 - bounds.x);
+    const dy = Math.round((asset.height - bounds.height) / 2 - bounds.y);
+    if (!dx && !dy) return;
+    set({
+      ...withProject(state, (project) =>
+        updateActiveAsset(project, state.activeAssetId, (entry) => mapAssetPixels(entry, (pixels) => offsetPixels(pixels, entry.width, entry.height, dx, dy))),
+      ),
+      selection: null,
+      movePreview: null,
+    });
+  },
+  padActiveAsset: (padding) => {
+    const state = get();
+    const amount = Math.max(1, Math.min(64, Math.round(padding)));
+    set({
+      ...withProject(state, (project) =>
+        updateActiveAsset(project, state.activeAssetId, (asset) => ({
+          ...mapAssetPixels(asset, (pixels) => padPixels(pixels, asset.width, asset.height, amount)),
+          width: asset.width + amount * 2,
+          height: asset.height + amount * 2,
+          pivot: asset.pivot ? { x: asset.pivot.x + amount, y: asset.pivot.y + amount } : undefined,
+        })),
+      ),
+      selection: null,
+      movePreview: null,
+    });
+  },
+  setActiveAssetPivot: (preset) =>
+    set(withProject(get(), (project) =>
+      updateActiveAsset(project, get().activeAssetId, (asset) => {
+        const pivot =
+          preset === "center" ? { x: Math.floor(asset.width / 2), y: Math.floor(asset.height / 2) } :
+          preset === "bottom" ? { x: Math.floor(asset.width / 2), y: asset.height - 1 } :
+          preset === "bottom-left" ? { x: 0, y: asset.height - 1 } :
+          { x: 0, y: 0 };
+        return { ...asset, pivot };
+      }),
+    )),
   renameAsset: (id, name) => set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, name } : asset)) }))),
   addLayer: () =>
     set(
@@ -1477,6 +1557,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { ...asset, frames };
     }))),
   setFrameDuration: (id, durationMs) => set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => ({ ...asset, frames: asset.frames.map((frame) => (frame.id === id ? { ...frame, durationMs } : frame)) })))),
+  setFrameTags: (id, tags) =>
+    set(withProject(get(), (project) =>
+      updateActiveAsset(project, get().activeAssetId, (asset) => ({
+        ...asset,
+        frames: asset.frames.map((frame) => (frame.id === id ? { ...frame, tags: tags.map((tag) => tag.trim()).filter(Boolean) } : frame)),
+      })),
+    )),
   setActiveFrame: (id) => set({ activeFrameId: id }),
   togglePlayback: () => set({ isPlaying: !get().isPlaying }),
   toggleOnionSkin: () => set({ onionSkin: !get().onionSkin }),

@@ -10,6 +10,7 @@ export type PixelFrame = {
   durationMs: number;
   layerIds: string[];
   cels?: Record<string, string[]>;
+  tags?: string[];
 };
 
 export type PixelLayer = {
@@ -29,6 +30,8 @@ export type PixelAsset = {
   layers: PixelLayer[];
   frames: PixelFrame[];
   paletteId?: string;
+  tags?: string[];
+  pivot?: { x: number; y: number };
 };
 
 export type Tileset = {

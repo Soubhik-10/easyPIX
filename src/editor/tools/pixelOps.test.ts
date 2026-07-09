@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustColor, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, rotatePixels, setPixel, trimClip } from "./pixelOps";
+import { adjustColor, clearSelectionPixels, copySelection, cropPixels, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, offsetPixels, padPixels, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, rotatePixels, setPixel, trimClip } from "./pixelOps";
 import type { PixelLayer } from "../../projects/types";
 
 const blank = (width: number, height: number) => Array.from({ length: width * height }, () => "transparent");
@@ -74,6 +74,17 @@ describe("pixel operations", () => {
       ],
     });
     expect(clip).toEqual({ width: 2, height: 1, pixels: ["#111111", "#222222"] });
+  });
+
+  it("crops, offsets, and pads pixel grids", () => {
+    const pixels = ["a", "b", "c", "d"];
+    expect(cropPixels(pixels, 2, 1, 0, 1, 2)).toEqual(["b", "d"]);
+    expect(offsetPixels(["#1", "transparent", "transparent", "transparent"], 2, 2, 1, 1)).toEqual(["transparent", "transparent", "transparent", "#1"]);
+    expect(padPixels(["#1"], 1, 1, 1)).toEqual([
+      "transparent", "transparent", "transparent",
+      "transparent", "#1", "transparent",
+      "transparent", "transparent", "transparent",
+    ]);
   });
 
   it("selects connected same-color pixels with magic wand bounds", () => {

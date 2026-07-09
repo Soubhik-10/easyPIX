@@ -2938,9 +2938,9 @@ button.active,
 
 .frame-cell {
   grid-template-columns: 1fr;
-  grid-template-rows: 52px 22px 30px;
+  grid-template-rows: 52px 22px 30px 28px;
   align-items: stretch;
-  flex: 0 0 142px;
+  flex: 0 0 154px;
   isolation: isolate;
 }
 
@@ -2958,6 +2958,14 @@ button.active,
   width: 58px;
   min-height: 26px;
   padding: 0 5px;
+}
+
+.frame-tag-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  padding: 0 7px;
+  font-size: 12px;
 }
 
 .help-layout {

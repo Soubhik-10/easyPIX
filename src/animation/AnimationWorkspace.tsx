@@ -33,6 +33,7 @@ export const AnimationWorkspace = () => {
   const onionSkin = useAppStore((state) => state.onionSkin);
   const fps = useAppStore((state) => state.fps);
   const [frameIndex, setFrameIndex] = useState(Math.max(0, asset.frames.findIndex((frame) => frame.id === activeFrameId)));
+  const [playbackMode, setPlaybackMode] = useState<"loop" | "pingpong">("loop");
   const [videoStatus, setVideoStatus] = useState<"idle" | "exporting" | "ready" | "error">("idle");
   const [videoMessage, setVideoMessage] = useState("");
 
@@ -102,7 +103,8 @@ export const AnimationWorkspace = () => {
     });
     try {
       recorder.start();
-      for (const frame of asset.frames) {
+      const videoFrames = playbackMode === "pingpong" && asset.frames.length > 2 ? [...asset.frames, ...asset.frames.slice(1, -1).reverse()] : asset.frames;
+      for (const frame of videoFrames) {
         drawFrameToCanvas(canvas, frame.id, scale);
         await new Promise((resolve) => window.setTimeout(resolve, Math.max(40, frame.durationMs)));
       }
@@ -121,6 +123,9 @@ export const AnimationWorkspace = () => {
 
   const activeFrame = asset.frames.find((frame) => frame.id === activeFrameId) ?? asset.frames[frameIndex] ?? asset.frames[0];
   const sourceAssets = project.assets.filter((entry) => entry.id !== asset.id);
+  const playbackOrder = playbackMode === "pingpong" && asset.frames.length > 2
+    ? [...asset.frames.map((_, index) => index), ...asset.frames.slice(1, -1).map((_, index) => asset.frames.length - 2 - index)]
+    : asset.frames.map((_, index) => index);
   const drawFrame = (frameId: string) => {
     useAppStore.getState().setActiveFrame(frameId);
     useAppStore.getState().setWorkspace("editor");
@@ -134,9 +139,12 @@ export const AnimationWorkspace = () => {
 
   useEffect(() => {
     if (!isPlaying) return;
-    const handle = window.setInterval(() => setFrameIndex((current) => (current + 1) % asset.frames.length), 1000 / fps);
+    const handle = window.setInterval(() => setFrameIndex((current) => {
+      const orderIndex = playbackOrder.indexOf(current);
+      return playbackOrder[(orderIndex + 1) % playbackOrder.length] ?? 0;
+    }), 1000 / fps);
     return () => window.clearInterval(handle);
-  }, [asset.frames.length, fps, isPlaying]);
+  }, [fps, isPlaying, playbackOrder]);
 
   useEffect(() => {
     const index = asset.frames.findIndex((frame) => frame.id === activeFrameId);
@@ -176,6 +184,9 @@ export const AnimationWorkspace = () => {
           <button onClick={() => setAllFrameDurations(80)}>Fast</button>
           <button onClick={() => setAllFrameDurations(140)}>Normal</button>
           <button onClick={() => setAllFrameDurations(220)}>Slow</button>
+          <button className={playbackMode === "pingpong" ? "active" : ""} onClick={() => setPlaybackMode(playbackMode === "loop" ? "pingpong" : "loop")}>
+            {playbackMode === "loop" ? "Loop" : "Ping-pong"}
+          </button>
         </div>
         <button onClick={() => useAppStore.getState().addFrame()}>
           <Plus size={16} /> Add frame
@@ -252,6 +263,14 @@ export const AnimationWorkspace = () => {
               <input type="number" min="40" value={frame.durationMs} onChange={(event) => useAppStore.getState().setFrameDuration(frame.id, Number(event.target.value))} />
               <span>ms</span>
             </label>
+            <input
+              className="frame-tag-input"
+              value={(frame.tags ?? []).join(", ")}
+              placeholder="idle, walk"
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => useAppStore.getState().setFrameTags(frame.id, event.target.value.split(","))}
+              title="Comma-separated frame tags"
+            />
             <span className="frame-actions">
               <span role="button" tabIndex={0} title="Edit frame" onClick={(event) => { event.stopPropagation(); drawFrame(frame.id); }}><Edit3 size={14} /></span>
               <span role="button" tabIndex={0} title="Move frame left" onClick={(event) => { event.stopPropagation(); useAppStore.getState().moveFrame(frame.id, -1); }}><ArrowLeft size={14} /></span>

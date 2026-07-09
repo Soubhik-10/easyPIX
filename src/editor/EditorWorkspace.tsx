@@ -473,6 +473,25 @@ export const EditorWorkspace = () => {
               <RotateCw size={15} /> Right
             </button>
           </div>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().trimActiveAsset()} title="Crop canvas to visible pixels">
+              Trim
+            </button>
+            <button onClick={() => useAppStore.getState().centerActiveArt()} title="Move visible art to the center of the canvas">
+              Center art
+            </button>
+            <button onClick={() => useAppStore.getState().padActiveAsset(4)} title="Add transparent padding around the asset">
+              +4 padding
+            </button>
+          </div>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().setActiveAssetPivot("center")} title="Export origin: center">
+              Pivot center
+            </button>
+            <button onClick={() => useAppStore.getState().setActiveAssetPivot("bottom")} title="Export origin: bottom-center, good for characters">
+              Pivot feet
+            </button>
+          </div>
           <div className="resize-preset-row" aria-label="Canvas size presets">
             <button onClick={() => resizeCanvasTo(asset.width * 2, asset.height * 2)}>2x</button>
             {canvasPresets.map((size) => (
