@@ -607,6 +607,17 @@ export const EditorWorkspace = () => {
               Stamp text
             </button>
           </div>
+          <div className="text-palette-row" aria-label="Pixel text palette colors">
+            {palette.colors.slice(0, 18).map((entry) => (
+              <button
+                key={entry}
+                className={pixelTextColor.toLowerCase() === entry.toLowerCase() ? "active swatch" : "swatch"}
+                style={{ background: entry }}
+                onClick={() => setPixelTextColor(entry)}
+                title={`Use ${entry} for text`}
+              />
+            ))}
+          </div>
           <div className="button-row">
             <button onClick={() => setPixelText(pixelText.toUpperCase())}>Uppercase</button>
             <button onClick={() => setPixelText(pixelText.toLowerCase())}>Lowercase</button>
