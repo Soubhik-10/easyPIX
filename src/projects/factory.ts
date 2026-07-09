@@ -28,7 +28,7 @@ export const createAsset = (name = "Untitled Sprite", width = 32, height = 32): 
   };
 };
 
-export type TemplateKind = "grass" | "flower" | "water" | "path" | "tree" | "bush" | "rock" | "shadow" | "coin" | "hero";
+export type TemplateKind = "grass" | "flower" | "water" | "path" | "sand" | "tree" | "bush" | "rock" | "mushroom" | "fence" | "stump" | "sparkle" | "shadow" | "coin" | "hero";
 
 const putPixel = (pixels: string[], width: number, x: number, y: number, color: string) => {
   pixels[y * width + x] = color;
@@ -48,24 +48,37 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
     flower: "Template Flower Tile",
     water: "Template Water Tile",
     path: "Template Dirt Path",
+    sand: "Template Sand Tile",
     tree: "Template Tree Prop",
     bush: "Template Bush Prop",
     rock: "Template Rock Prop",
+    mushroom: "Template Mushroom Prop",
+    fence: "Template Fence Prop",
+    stump: "Template Stump Prop",
+    sparkle: "Template Sparkle",
     shadow: "Template Soft Shadow",
     coin: "Template Coin",
     hero: "Template Tiny Hero",
   };
 
   if (kind === "grass" || kind === "flower") {
-    pixels.fill("#5a8f3d");
-    for (let i = 0; i < pixels.length; i += 1) if ((i + Math.floor(i / size)) % 5 === 0) pixels[i] = "#9bd16f";
+    pixels.fill("#4f8a38");
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        if ((x * 3 + y * 5) % 11 === 0) putPixel(pixels, size, x, y, "#9bd16f");
+        if ((x + y * 2) % 13 === 0) putPixel(pixels, size, x, y, "#2f6b2f");
+        if (y % 5 === 3 && x % 4 === 1) putPixel(pixels, size, x, y, "#6fbf4a");
+      }
+    }
     if (kind === "flower") {
-      fillRect(pixels, size, 7, 6, 2, 5, "#3f6f34");
-      putPixel(pixels, size, 7, 5, "#e36f8c");
-      putPixel(pixels, size, 8, 5, "#e36f8c");
-      putPixel(pixels, size, 6, 6, "#f0a3a3");
-      putPixel(pixels, size, 9, 6, "#f0a3a3");
-      putPixel(pixels, size, 8, 6, "#f5c16c");
+      fillRect(pixels, size, 7, 6, 2, 7, "#2f6b2f");
+      fillRect(pixels, size, 6, 10, 4, 2, "#6fbf4a");
+      fillRect(pixels, size, 6, 4, 4, 4, "#fb7185");
+      putPixel(pixels, size, 7, 3, "#f9a8d4");
+      putPixel(pixels, size, 8, 3, "#f9a8d4");
+      putPixel(pixels, size, 5, 5, "#f9a8d4");
+      putPixel(pixels, size, 10, 5, "#f9a8d4");
+      fillRect(pixels, size, 7, 5, 2, 2, "#facc15");
     }
   }
 
@@ -78,22 +91,36 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
   }
 
   if (kind === "path") {
-    pixels.fill("#5a8f3d");
+    pixels.fill("#c77d3b");
     for (let y = 0; y < size; y += 1) {
-      const left = Math.max(0, 4 - Math.floor(y / 6));
-      const right = Math.min(size - 1, 11 + Math.floor(y / 6));
-      for (let x = left; x <= right; x += 1) putPixel(pixels, size, x, y, (x + y) % 4 === 0 ? "#f5c16c" : "#c77d3b");
+      for (let x = 0; x < size; x += 1) {
+        if ((x + y) % 5 === 0) putPixel(pixels, size, x, y, "#f5c16c");
+        if ((x * 2 + y) % 9 === 0) putPixel(pixels, size, x, y, "#9a5a2b");
+      }
+    }
+  }
+
+  if (kind === "sand") {
+    pixels.fill("#f5d98b");
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        if ((x + y * 2) % 7 === 0) putPixel(pixels, size, x, y, "#f8e7b0");
+        if ((x * 3 + y) % 13 === 0) putPixel(pixels, size, x, y, "#d6a85d");
+      }
     }
   }
 
   if (kind === "tree") {
-    fillRect(pixels, size, 7, 9, 3, 5, "#6b3f2a");
-    fillRect(pixels, size, 5, 4, 7, 6, "#3f6f34");
-    fillRect(pixels, size, 3, 6, 11, 4, "#5a8f3d");
-    fillRect(pixels, size, 6, 2, 5, 4, "#5a8f3d");
-    putPixel(pixels, size, 4, 5, "#9bd16f");
-    putPixel(pixels, size, 10, 4, "#9bd16f");
-    putPixel(pixels, size, 12, 7, "#2f5f2c");
+    fillRect(pixels, size, 7, 9, 3, 6, "#6b3f2a");
+    fillRect(pixels, size, 6, 11, 5, 3, "#8a5a36");
+    fillRect(pixels, size, 4, 4, 9, 7, "#2f6b2f");
+    fillRect(pixels, size, 2, 6, 13, 4, "#4f8a38");
+    fillRect(pixels, size, 5, 1, 7, 5, "#5fb34b");
+    fillRect(pixels, size, 7, 0, 3, 3, "#75c957");
+    putPixel(pixels, size, 4, 4, "#9bd16f");
+    putPixel(pixels, size, 10, 3, "#9bd16f");
+    putPixel(pixels, size, 13, 7, "#214f29");
+    putPixel(pixels, size, 3, 8, "#214f29");
   }
 
   if (kind === "bush") {
@@ -111,6 +138,48 @@ export const createTemplateAsset = (kind: TemplateKind): PixelAsset => {
     putPixel(pixels, size, 6, 7, "#cbd5e1");
     putPixel(pixels, size, 10, 8, "#64748b");
     putPixel(pixels, size, 12, 10, "#475569");
+  }
+
+  if (kind === "mushroom") {
+    fillRect(pixels, size, 7, 8, 3, 5, "#f8e7d0");
+    fillRect(pixels, size, 4, 5, 9, 4, "#dc2626");
+    fillRect(pixels, size, 5, 4, 7, 2, "#ef4444");
+    putPixel(pixels, size, 6, 6, "#fecaca");
+    putPixel(pixels, size, 10, 6, "#fecaca");
+    fillRect(pixels, size, 6, 13, 5, 1, "#7c4a2d");
+  }
+
+  if (kind === "fence") {
+    fillRect(pixels, size, 1, 8, 14, 2, "#8a5a36");
+    fillRect(pixels, size, 1, 11, 14, 2, "#6b3f2a");
+    for (const x of [2, 7, 12]) {
+      fillRect(pixels, size, x, 5, 2, 9, "#a1623a");
+      putPixel(pixels, size, x, 4, "#d08a4c");
+      putPixel(pixels, size, x + 1, 4, "#d08a4c");
+    }
+  }
+
+  if (kind === "stump") {
+    fillRect(pixels, size, 5, 7, 7, 6, "#8a5a36");
+    fillRect(pixels, size, 4, 6, 9, 3, "#a1623a");
+    fillRect(pixels, size, 6, 7, 5, 1, "#d08a4c");
+    putPixel(pixels, size, 7, 8, "#6b3f2a");
+    putPixel(pixels, size, 9, 8, "#6b3f2a");
+    fillRect(pixels, size, 4, 13, 9, 1, "#5b3824");
+  }
+
+  if (kind === "sparkle") {
+    putPixel(pixels, size, 8, 3, "#fef3c7");
+    putPixel(pixels, size, 8, 4, "#facc15");
+    putPixel(pixels, size, 8, 5, "#facc15");
+    putPixel(pixels, size, 6, 5, "#fef3c7");
+    putPixel(pixels, size, 7, 5, "#facc15");
+    putPixel(pixels, size, 9, 5, "#facc15");
+    putPixel(pixels, size, 10, 5, "#fef3c7");
+    putPixel(pixels, size, 8, 6, "#facc15");
+    putPixel(pixels, size, 8, 7, "#fef3c7");
+    putPixel(pixels, size, 4, 10, "#fef3c7");
+    putPixel(pixels, size, 12, 11, "#fef3c7");
   }
 
   if (kind === "shadow") {

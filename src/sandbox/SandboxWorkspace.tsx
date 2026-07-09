@@ -1,5 +1,5 @@
-import { PointerEvent, useEffect, useRef } from "react";
-import { Download, Eraser, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, TreePine, Waves } from "lucide-react";
+import { PointerEvent, useEffect, useRef, useState } from "react";
+import { Download, Eraser, FlipHorizontal, FlipVertical, Flower2, Leaf, Mountain, RotateCw, Sparkles, TreePine, Waves } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderScene } from "../editor/canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob } from "../projects/importExport/zip";
@@ -9,12 +9,24 @@ const sceneBrushes = [
   { id: "erase", label: "Erase", icon: Eraser },
   { id: "grass", label: "Grass", icon: Leaf },
   { id: "path", label: "Path", icon: Mountain },
+  { id: "sand", label: "Sand", icon: Mountain },
   { id: "water", label: "Water", icon: Waves },
   { id: "tree", label: "Tree", icon: TreePine },
   { id: "bush", label: "Bush", icon: Leaf },
   { id: "flower", label: "Flower", icon: Flower2 },
   { id: "rock", label: "Rock", icon: Mountain },
+  { id: "mushroom", label: "Mushroom", icon: Flower2 },
+  { id: "fence", label: "Fence", icon: Mountain },
+  { id: "stump", label: "Stump", icon: TreePine },
+  { id: "sparkle", label: "Sparkle", icon: Sparkles },
   { id: "shadow", label: "Shadow", icon: Mountain },
+] as const;
+
+const sceneSizePresets = [
+  { label: "Tiny", width: 12, height: 8, tileSize: 32 },
+  { label: "Cozy", width: 20, height: 14, tileSize: 32 },
+  { label: "Wide", width: 32, height: 18, tileSize: 24 },
+  { label: "Big", width: 40, height: 28, tileSize: 24 },
 ] as const;
 
 export const SandboxWorkspace = () => {
@@ -26,10 +38,19 @@ export const SandboxWorkspace = () => {
   const sceneFlipX = useAppStore((state) => state.sceneFlipX);
   const sceneFlipY = useAppStore((state) => state.sceneFlipY);
   const sceneRotation = useAppStore((state) => state.sceneRotation);
+  const [sceneWidth, setSceneWidth] = useState(scene.width);
+  const [sceneHeight, setSceneHeight] = useState(scene.height);
+  const [sceneTileSize, setSceneTileSize] = useState(scene.tileSize);
 
   useEffect(() => {
     if (canvasRef.current) renderScene(canvasRef.current, scene, project.assets, 2);
   }, [project.assets, scene]);
+
+  useEffect(() => {
+    setSceneWidth(scene.width);
+    setSceneHeight(scene.height);
+    setSceneTileSize(scene.tileSize);
+  }, [scene.height, scene.id, scene.tileSize, scene.width]);
 
   const paint = (event: PointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
@@ -70,6 +91,43 @@ export const SandboxWorkspace = () => {
           Current asset brush
         </button>
         <p className="hint">Ground brushes paint ground. Props paint objects and add simple shadows automatically.</p>
+        <h2>Scene Size</h2>
+        <div className="scene-size-grid">
+          <label>
+            Width
+            <input type="number" min={4} max={80} value={sceneWidth} onChange={(event) => setSceneWidth(Number(event.target.value))} />
+          </label>
+          <label>
+            Height
+            <input type="number" min={4} max={80} value={sceneHeight} onChange={(event) => setSceneHeight(Number(event.target.value))} />
+          </label>
+          <label>
+            Tile
+            <select value={sceneTileSize} onChange={(event) => setSceneTileSize(Number(event.target.value))}>
+              {[16, 24, 32, 48, 64].map((size) => (
+                <option key={size} value={size}>
+                  {size}px
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="scene-preset-row">
+          <button onClick={() => useAppStore.getState().resizeActiveScene(sceneWidth, sceneHeight, sceneTileSize)}>Apply</button>
+          {sceneSizePresets.map((preset) => (
+            <button
+              key={preset.label}
+              onClick={() => {
+                setSceneWidth(preset.width);
+                setSceneHeight(preset.height);
+                setSceneTileSize(preset.tileSize);
+                useAppStore.getState().resizeActiveScene(preset.width, preset.height, preset.tileSize);
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <h2>Tile Transform</h2>
         <div className="segmented">
           <button className={sceneFlipX ? "active" : ""} onClick={() => useAppStore.getState().toggleSceneFlipX()} title="Flip tile horizontally">

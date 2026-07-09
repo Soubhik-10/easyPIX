@@ -2921,6 +2921,46 @@ button.active,
   padding: 0 10px;
 }
 
+.scene-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.scene-size-grid label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.scene-size-grid input,
+.scene-size-grid select {
+  width: 100%;
+  min-width: 0;
+}
+
+.scene-preset-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.scene-preset-row button {
+  min-width: 0;
+  padding-inline: 6px;
+}
+
+@media (max-width: 760px) {
+  .scene-size-grid,
+  .scene-preset-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .export-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(110px, 1fr));

@@ -35,7 +35,22 @@ import { drawPixelText, measurePixelText } from "../editor/tools/pixelFont";
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type FileSaveStatus = "unsupported" | "disconnected" | "connected" | "saving" | "error";
-type SceneBrush = "asset" | "erase" | "grass" | "path" | "water" | "tree" | "bush" | "flower" | "rock" | "shadow";
+type SceneBrush =
+  | "asset"
+  | "erase"
+  | "grass"
+  | "path"
+  | "sand"
+  | "water"
+  | "tree"
+  | "bush"
+  | "flower"
+  | "rock"
+  | "mushroom"
+  | "fence"
+  | "stump"
+  | "sparkle"
+  | "shadow";
 type SceneRotation = 0 | 90 | 180 | 270;
 
 type AppState = {
@@ -176,6 +191,7 @@ type AppState = {
   paintSceneBrush: (x: number, y: number) => void;
   setSceneBrush: (brush: SceneBrush) => void;
   setSceneLayer: (layer: SceneLayer) => void;
+  resizeActiveScene: (width: number, height: number, tileSize?: number) => void;
   toggleSceneFlipX: () => void;
   toggleSceneFlipY: () => void;
   rotateSceneBrush: () => void;
@@ -261,12 +277,12 @@ const ensureTemplateAsset = (project: PixelProject, kind: TemplateKind) => {
 
 const layerForSceneBrush = (brush: SceneBrush, activeLayer: SceneLayer): SceneLayer => {
   if (brush === "asset" || brush === "erase") return activeLayer;
-  if (brush === "grass" || brush === "path" || brush === "water") return "ground";
-  if (brush === "shadow") return "overlay";
+  if (brush === "grass" || brush === "path" || brush === "sand" || brush === "water") return "ground";
+  if (brush === "shadow" || brush === "sparkle") return "overlay";
   return "objects";
 };
 
-const brushNeedsShadow = (brush: SceneBrush) => brush === "tree" || brush === "bush" || brush === "rock";
+const brushNeedsShadow = (brush: SceneBrush) => brush === "tree" || brush === "bush" || brush === "rock" || brush === "mushroom" || brush === "fence" || brush === "stump";
 const sceneCells = (scene: { width: number; height: number }, cells: SceneCell[]) =>
   Array.from({ length: scene.width * scene.height }, (_, index) => cells[index] ?? null);
 
@@ -1816,6 +1832,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     ),
   setSceneBrush: (sceneBrush) => set({ sceneBrush }),
   setSceneLayer: (layer) => set(withProject(get(), (project) => ({ ...project, scenes: project.scenes.map((scene) => (scene.id === get().activeSceneId ? { ...scene, activeLayer: layer } : scene)) }))),
+  resizeActiveScene: (width, height, tileSize) =>
+    set(
+      withProject(get(), (project) => ({
+        ...project,
+        scenes: project.scenes.map((scene) => {
+          if (scene.id !== get().activeSceneId) return scene;
+          const nextWidth = Math.max(4, Math.min(80, Math.round(width)));
+          const nextHeight = Math.max(4, Math.min(80, Math.round(height)));
+          const nextTileSize = tileSize === undefined ? scene.tileSize : Math.max(8, Math.min(64, Math.round(tileSize)));
+          const resizeCells = (cells: SceneCell[]) => {
+            const current = sceneCells(scene, cells);
+            return Array.from({ length: nextWidth * nextHeight }, (_, index) => {
+              const x = index % nextWidth;
+              const y = Math.floor(index / nextWidth);
+              return x < scene.width && y < scene.height ? current[y * scene.width + x] ?? null : null;
+            });
+          };
+          return {
+            ...scene,
+            width: nextWidth,
+            height: nextHeight,
+            tileSize: nextTileSize,
+            layers: {
+              ground: resizeCells(scene.layers.ground),
+              objects: resizeCells(scene.layers.objects),
+              overlay: resizeCells(scene.layers.overlay),
+            },
+          };
+        }),
+      })),
+    ),
   toggleSceneFlipX: () => set({ sceneFlipX: !get().sceneFlipX }),
   toggleSceneFlipY: () => set({ sceneFlipY: !get().sceneFlipY }),
   rotateSceneBrush: () => {
