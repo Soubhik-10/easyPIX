@@ -3403,7 +3403,7 @@ button.active,
   .editor-layout.detailed-tools.mobile-editor-mode {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    padding-bottom: 122px;
+    padding-bottom: 214px;
   }
 
   .mobile-editor-mode .tool-rail {
@@ -3427,11 +3427,11 @@ button.active,
   }
 
   .mobile-editor-mode .canvas-stage {
-    min-height: 58vh;
+    min-height: 62vh;
   }
 
   .mobile-editor-mode .stage-toolbar {
-    max-height: 136px;
+    max-height: 112px;
     overflow: auto;
     padding: 8px;
   }
@@ -3443,13 +3443,14 @@ button.active,
   }
 
   .mobile-editor-mode .canvas-scroll {
-    padding: 16px 16px 120px;
+    min-height: 52vh;
+    padding: 18px 18px 168px;
     touch-action: none;
     overscroll-behavior: contain;
   }
 
   .mobile-editor-mode .inspector {
-    max-height: 42vh;
+    max-height: 36vh;
     border-left: 0;
     border-top: 1px solid var(--app-border);
   }
@@ -3461,26 +3462,80 @@ button.active,
   .editor-layout.detailed-tools .mobile-editor-bar {
     position: fixed;
     right: 10px;
-    bottom: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
     left: 10px;
     z-index: 30;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: stretch;
+    gap: 8px;
+    max-height: 42vh;
+    padding: 10px;
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: 12px;
     background: color-mix(in srgb, var(--app-surface) 94%, transparent);
     box-shadow: var(--app-shadow);
-    overflow-x: auto;
+    overflow: auto;
     backdrop-filter: blur(10px);
   }
 
+  .mobile-control-group,
+  .mobile-swatch-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
   .mobile-editor-bar button {
-    flex: 0 0 auto;
-    min-height: 42px;
-    padding: 0 10px;
+    min-height: 44px;
+    padding: 0 11px;
     white-space: nowrap;
+  }
+
+  .mobile-quick-tools {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-quick-tools button {
+    flex: 1 1 86px;
+    justify-content: center;
+  }
+
+  .mobile-swatch-strip {
+    grid-column: 1 / -1;
+    padding: 4px 0;
+  }
+
+  .mobile-swatch-strip button,
+  .mobile-swatch-strip input[type="color"] {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+    padding: 0;
+    background: var(--swatch, var(--app-panel));
+  }
+
+  .mobile-swatch-strip input[type="color"] {
+    overflow: hidden;
+  }
+
+  .mobile-stepper-row {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-stepper-row span {
+    display: inline-grid;
+    place-items: center;
+    min-width: 48px;
+    min-height: 38px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    color: var(--app-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
   }
 
   .mobile-nudge-pad {

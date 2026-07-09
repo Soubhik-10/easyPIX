@@ -134,7 +134,7 @@ export const EditorWorkspace = () => {
 
   const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>, options: { precision?: boolean } = {}) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    const clientY = options.precision && event.pointerType === "touch" ? event.clientY - 44 : event.clientY;
+    const clientY = options.precision && event.pointerType === "touch" ? event.clientY - 56 : event.clientY;
     return {
       x: Math.floor((event.clientX - rect.left) / zoom),
       y: Math.floor((clientY - rect.top) / zoom),
@@ -736,20 +736,60 @@ export const EditorWorkspace = () => {
         </section>
       </aside>
       <nav className="mobile-editor-bar" aria-label="Mobile editor controls">
-        <button className={mobileMode ? "active" : ""} onClick={() => setMobileMode(!mobileMode)} title="Mobile drawing layout">
-          <PanelBottom size={17} /> Mobile
-        </button>
-        <button className={precisionMode ? "active" : ""} onClick={() => setPrecisionMode(!precisionMode)} title="Offset precision cursor">
-          <Search size={17} /> Precision
-        </button>
-        <button className={panMode ? "active" : ""} onClick={() => setPanMode(!panMode)} title="One-finger pan mode">
-          <Move size={17} /> Pan
-        </button>
-        <button onClick={() => useAppStore.getState().setZoom(8)}>8x</button>
-        <button onClick={() => useAppStore.getState().setZoom(16)}>16x</button>
-        <button onClick={() => useAppStore.getState().setZoom(32)}>32x</button>
-        <button onClick={() => useAppStore.getState().undo()}>Undo</button>
-        <button onClick={() => useAppStore.getState().redo()}>Redo</button>
+        <div className="mobile-control-group">
+          <button className={mobileMode ? "active" : ""} onClick={() => setMobileMode(!mobileMode)} title="Mobile drawing layout">
+            <PanelBottom size={17} /> Mobile
+          </button>
+          <button className={precisionMode ? "active" : ""} onClick={() => setPrecisionMode(!precisionMode)} title="Offset precision cursor">
+            <Search size={17} /> Precision
+          </button>
+          <button className={panMode ? "active" : ""} onClick={() => setPanMode(!panMode)} title="One-finger pan mode">
+            <Move size={17} /> Pan
+          </button>
+        </div>
+        <div className="mobile-control-group mobile-quick-tools" aria-label="Quick tools">
+          {[
+            { id: "pencil" as ToolId, label: "Draw", icon: Brush },
+            { id: "eraser" as ToolId, label: "Erase", icon: Eraser },
+            { id: "fill" as ToolId, label: "Fill", icon: PaintBucket },
+            { id: "picker" as ToolId, label: "Pick", icon: Pipette },
+            { id: "lasso" as ToolId, label: "Select", icon: MousePointer2 },
+            { id: "move" as ToolId, label: "Move", icon: Move },
+          ].map((entry) => {
+            const Icon = entry.icon;
+            return (
+              <button key={entry.id} className={tool === entry.id ? "active" : ""} onClick={() => useAppStore.getState().setTool(entry.id)} title={entry.label}>
+                <Icon size={17} /> {entry.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mobile-swatch-strip" aria-label="Quick colors">
+          {palette.colors.slice(0, 10).map((entry) => (
+            <button
+              key={entry}
+              className={color.toLowerCase() === entry.toLowerCase() ? "active" : ""}
+              style={{ "--swatch": entry } as CSSProperties}
+              onClick={() => useAppStore.getState().setColor(entry)}
+              title={entry}
+            />
+          ))}
+          <input type="color" value={color} onChange={(event) => useAppStore.getState().setColor(event.target.value)} aria-label="Custom color" />
+        </div>
+        <div className="mobile-control-group mobile-stepper-row">
+          <button onClick={() => useAppStore.getState().setBrushSize(Math.max(1, brushSize - 1))}>Brush -</button>
+          <span>{brushSize}px</span>
+          <button onClick={() => useAppStore.getState().setBrushSize(Math.min(12, brushSize + 1))}>Brush +</button>
+          <button onClick={() => useAppStore.getState().setZoom(Math.max(4, zoom - 4))}>Zoom -</button>
+          <span>{zoom}x</span>
+          <button onClick={() => useAppStore.getState().setZoom(Math.min(80, zoom + 4))}>Zoom +</button>
+        </div>
+        <div className="mobile-control-group">
+          <button onClick={() => useAppStore.getState().undo()}>Undo</button>
+          <button onClick={() => useAppStore.getState().redo()}>Redo</button>
+          <button onClick={() => useAppStore.getState().setZoom(16)}>16x</button>
+          <button onClick={() => useAppStore.getState().setZoom(32)}>32x</button>
+        </div>
         <div className="mobile-nudge-pad">
           <button onClick={() => useAppStore.getState().moveSelection(0, -nudgeAmount)} disabled={!selection}><ArrowUp size={15} /></button>
           <button onClick={() => useAppStore.getState().moveSelection(-nudgeAmount, 0)} disabled={!selection}><ArrowLeft size={15} /></button>
