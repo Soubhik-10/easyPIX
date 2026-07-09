@@ -141,7 +141,7 @@ type AppState = {
   deleteSelection: () => void;
   moveSelection: (dx: number, dy: number) => void;
   clearActiveLayer: () => void;
-  addPixelText: (text: string, scale: number) => void;
+  addPixelText: (text: string, scale: number, color?: string) => void;
   fixSprite: (fix: "outline" | "shadow" | "highlight" | "contrast" | "center-feet" | "readable") => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
@@ -1372,14 +1372,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, Array.from({ length: entry.width * entry.height }, () => "transparent")),
     }))));
   },
-  addPixelText: (text, scale) => {
+  addPixelText: (text, scale, textColor) => {
     const state = get();
     const asset = activeAsset(state);
     const cleanText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").slice(0, 240);
     if (!asset || !cleanText.trim()) return;
     const x = state.selection?.x ?? 0;
     const y = state.selection?.y ?? 0;
-    const color = state.color && state.color !== "transparent" ? state.color : "#111827";
+    const color = textColor && textColor !== "transparent" ? textColor : state.color && state.color !== "transparent" ? state.color : "#111827";
     const textLayer = createLayer("Pixel Text", asset.width, asset.height);
     const textPixels = drawPixelText(textLayer.pixels, asset.width, asset.height, x, y, cleanText, color, scale);
     const measured = measurePixelText(cleanText, scale);

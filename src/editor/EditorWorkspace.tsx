@@ -113,6 +113,7 @@ export const EditorWorkspace = () => {
   const [paletteExportText, setPaletteExportText] = useState("");
   const [pixelText, setPixelText] = useState("HELLO");
   const [pixelTextScale, setPixelTextScale] = useState(1);
+  const [pixelTextColor, setPixelTextColor] = useState(color);
   const [referenceUrl, setReferenceUrl] = useState("");
   const [referenceOpacity, setReferenceOpacity] = useState(35);
   const [sliceWidth, setSliceWidth] = useState(32);
@@ -131,6 +132,10 @@ export const EditorWorkspace = () => {
   useEffect(() => {
     if (canvasRef.current && asset) renderAsset(canvasRef.current, asset, zoom, { grid: showGrid, selection, movePreview, frameId: activeFrameId });
   }, [asset, zoom, showGrid, selection, movePreview, activeFrameId]);
+
+  useEffect(() => {
+    setPixelTextColor(color);
+  }, [color]);
 
   const pixelFromEvent = (event: PointerEvent<HTMLCanvasElement>, options: { precision?: boolean } = {}) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -594,7 +599,11 @@ export const EditorWorkspace = () => {
               Scale
               <input type="number" min="1" max="6" value={pixelTextScale} onChange={(event) => setPixelTextScale(Number(event.target.value))} />
             </label>
-            <button onClick={() => useAppStore.getState().addPixelText(pixelText, pixelTextScale)}>
+            <label>
+              Color
+              <input type="color" value={pixelTextColor} onChange={(event) => setPixelTextColor(event.target.value)} />
+            </label>
+            <button onClick={() => { useAppStore.getState().setColor(pixelTextColor); useAppStore.getState().addPixelText(pixelText, pixelTextScale, pixelTextColor); }}>
               Stamp text
             </button>
           </div>
