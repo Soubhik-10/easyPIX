@@ -16,6 +16,7 @@ import {
   FlipHorizontal,
   FlipVertical,
   Grid2X2,
+  Keyboard,
   Layers,
   Lock,
   Maximize,
@@ -107,6 +108,8 @@ export const EditorWorkspace = () => {
   const [swapFrom, setSwapFrom] = useState(color);
   const [swapTo, setSwapTo] = useState(customColor);
   const [paletteExportText, setPaletteExportText] = useState("");
+  const [pixelText, setPixelText] = useState("HELLO");
+  const [pixelTextScale, setPixelTextScale] = useState(1);
   const [referenceUrl, setReferenceUrl] = useState("");
   const [referenceOpacity, setReferenceOpacity] = useState(35);
   const [sliceWidth, setSliceWidth] = useState(32);
@@ -502,6 +505,25 @@ export const EditorWorkspace = () => {
             <span>{referenceOpacity}%</span>
           </label>
           <p className="hint">Use this as a faint guide while drawing. It is not saved into the artwork.</p>
+        </section>
+        <section className="panel">
+          <h2><Keyboard size={16} /> Pixel Text</h2>
+          <textarea value={pixelText} onChange={(event) => setPixelText(event.target.value)} placeholder="Type text, numbers, symbols..." />
+          <div className="compact-grid">
+            <label>
+              Scale
+              <input type="number" min="1" max="6" value={pixelTextScale} onChange={(event) => setPixelTextScale(Number(event.target.value))} />
+            </label>
+            <button onClick={() => useAppStore.getState().addPixelText(pixelText, pixelTextScale)}>
+              Stamp text
+            </button>
+          </div>
+          <div className="button-row">
+            <button onClick={() => setPixelText(pixelText.toUpperCase())}>Uppercase</button>
+            <button onClick={() => setPixelText(pixelText.toLowerCase())}>Lowercase</button>
+            <button onClick={() => setPixelText("")}>Clear</button>
+          </div>
+          <p className="hint">Uses the current color and stamps at the selection top-left.</p>
         </section>
         <section className="panel">
           <h2><WandSparkles size={16} /> Starter Templates</h2>

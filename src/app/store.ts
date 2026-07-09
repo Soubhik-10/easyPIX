@@ -25,6 +25,7 @@ import {
   setPixel,
   sprayBrush,
 } from "../editor/tools/pixelOps";
+import { drawPixelText } from "../editor/tools/pixelFont";
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -129,6 +130,7 @@ type AppState = {
   deleteSelection: () => void;
   moveSelection: (dx: number, dy: number) => void;
   clearActiveLayer: () => void;
+  addPixelText: (text: string, scale: number) => void;
   flipSelectionX: () => void;
   flipSelectionY: () => void;
   rotateSelection: () => void;
@@ -1111,6 +1113,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!asset || !layer || layer.locked) return;
     set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
       ...setFrameLayerPixels(entry, state.activeFrameId, layer.id, Array.from({ length: entry.width * entry.height }, () => "transparent")),
+    }))));
+  },
+  addPixelText: (text, scale) => {
+    const state = get();
+    const asset = activeAsset(state);
+    const layer = activeLayer(state);
+    const cleanText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").slice(0, 240);
+    if (!asset || !layer || layer.locked || !cleanText.trim()) return;
+    const x = state.selection?.x ?? 0;
+    const y = state.selection?.y ?? 0;
+    const color = state.color && state.color !== "transparent" ? state.color : "#111827";
+    set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
+      ...setFrameLayerPixels(
+        entry,
+        state.activeFrameId,
+        layer.id,
+        drawPixelText(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, x, y, cleanText, color, scale),
+      ),
     }))));
   },
   flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),
