@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   FileJson,
+  ClipboardCopy,
   FlipHorizontal,
   FlipVertical,
   Grid2X2,
@@ -116,6 +117,7 @@ export const EditorWorkspace = () => {
   const [referenceOpacity, setReferenceOpacity] = useState(35);
   const [sliceWidth, setSliceWidth] = useState(32);
   const [sliceHeight, setSliceHeight] = useState(32);
+  const [copyPngStatus, setCopyPngStatus] = useState("");
   const [mobileMode, setMobileMode] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const [precisionMode, setPrecisionMode] = useState(true);
   const [panMode, setPanMode] = useState(false);
@@ -293,6 +295,20 @@ export const EditorWorkspace = () => {
     const imported = await importSpritesheetAsAnimation(file, sliceWidth, sliceHeight);
     useAppStore.getState().addImportedAssets([imported]);
     event.target.value = "";
+  };
+
+  const copyActivePng = async () => {
+    const blob = exportAssetPng(asset, exportScale);
+    const filename = `${asset.name}-${exportScale}x.png`;
+    try {
+      if (!navigator.clipboard || typeof ClipboardItem === "undefined") throw new Error("Image clipboard is not supported in this browser.");
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      setCopyPngStatus("Copied PNG to clipboard.");
+    } catch (error) {
+      downloadBlob(blob, filename);
+      setCopyPngStatus("Clipboard was blocked, downloaded PNG instead.");
+    }
+    window.setTimeout(() => setCopyPngStatus(""), 3200);
   };
 
   const resizeCanvasTo = (width: number, height = width) => {
@@ -534,7 +550,11 @@ export const EditorWorkspace = () => {
             <button onClick={() => downloadBlob(exportAssetPng(asset, exportScale), `${asset.name}-${exportScale}x.png`)}>
               <Download size={15} /> PNG
             </button>
+            <button onClick={() => void copyActivePng()} title="Copy the exported PNG to clipboard, with download fallback">
+              <ClipboardCopy size={15} /> Copy
+            </button>
           </div>
+          {copyPngStatus ? <p className="hint">{copyPngStatus}</p> : null}
         </section>
         <section className="panel">
           <h2><Eye size={16} /> Reference</h2>
