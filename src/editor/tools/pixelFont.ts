@@ -88,3 +88,22 @@ export const drawPixelText = (pixels: string[], width: number, height: number, x
   }
   return next;
 };
+
+export const measurePixelText = (text: string, scale = 1) => {
+  const pixelScale = Math.max(1, Math.min(6, Math.round(scale)));
+  const lines = text.split("\n");
+  const width = lines.reduce((maxWidth, line) => {
+    let cursorX = 0;
+    let lineWidth = 0;
+    for (const char of line) {
+      const charWidth = char === " " ? 4 * pixelScale : 5 * pixelScale;
+      lineWidth = cursorX + charWidth;
+      cursorX += char === " " ? 4 * pixelScale : 6 * pixelScale;
+    }
+    return Math.max(maxWidth, lineWidth);
+  }, 0);
+  return {
+    width: Math.max(1, width),
+    height: Math.max(1, (Math.max(1, lines.length) - 1) * 8 * pixelScale + 7 * pixelScale),
+  };
+};

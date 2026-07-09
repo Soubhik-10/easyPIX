@@ -22,10 +22,11 @@ import {
   replaceColor,
   resizePixels,
   rotateClip,
+  rotatePixels,
   setPixel,
   sprayBrush,
 } from "../editor/tools/pixelOps";
-import { drawPixelText } from "../editor/tools/pixelFont";
+import { drawPixelText, measurePixelText } from "../editor/tools/pixelFont";
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -114,6 +115,7 @@ type AppState = {
   addImportedAssets: (assets: PixelAsset[]) => void;
   duplicateAsset: (id: string) => void;
   resizeActiveAsset: (width: number, height: number) => void;
+  rotateActiveAsset: (direction: "cw" | "ccw") => void;
   renameAsset: (id: string, name: string) => void;
   addLayer: () => void;
   updateLayer: (id: string, patch: Partial<PixelLayer>) => void;
@@ -905,6 +907,28 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
       ),
     ),
+  rotateActiveAsset: (direction) =>
+    set({
+      ...withProject(get(), (project) =>
+        updateActiveAsset(project, get().activeAssetId, (asset) => ({
+          ...asset,
+          width: asset.height,
+          height: asset.width,
+          layers: asset.layers.map((layer) => ({
+            ...layer,
+            pixels: rotatePixels(layer.pixels, asset.width, asset.height, direction),
+          })),
+          frames: asset.frames.map((frame) => ({
+            ...frame,
+            cels: Object.fromEntries(
+              Object.entries(frame.cels ?? {}).map(([layerId, pixels]) => [layerId, rotatePixels(pixels, asset.width, asset.height, direction)]),
+            ),
+          })),
+        })),
+      ),
+      selection: null,
+      movePreview: null,
+    }),
   renameAsset: (id, name) => set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, name } : asset)) }))),
   addLayer: () =>
     set(
@@ -1118,20 +1142,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   addPixelText: (text, scale) => {
     const state = get();
     const asset = activeAsset(state);
-    const layer = activeLayer(state);
     const cleanText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").slice(0, 240);
-    if (!asset || !layer || layer.locked || !cleanText.trim()) return;
+    if (!asset || !cleanText.trim()) return;
     const x = state.selection?.x ?? 0;
     const y = state.selection?.y ?? 0;
     const color = state.color && state.color !== "transparent" ? state.color : "#111827";
+    const textLayer = createLayer("Pixel Text", asset.width, asset.height);
+    const textPixels = drawPixelText(textLayer.pixels, asset.width, asset.height, x, y, cleanText, color, scale);
+    const measured = measurePixelText(cleanText, scale);
+    const selection = {
+      x,
+      y,
+      width: Math.max(1, Math.min(measured.width, asset.width - x)),
+      height: Math.max(1, Math.min(measured.height, asset.height - y)),
+    };
     set(withProject(state, (project) => updateActiveAsset(project, state.activeAssetId, (entry) => ({
-      ...setFrameLayerPixels(
-        entry,
-        state.activeFrameId,
-        layer.id,
-        drawPixelText(pixelsForLayer(entry, state.activeFrameId, layer), entry.width, entry.height, x, y, cleanText, color, scale),
-      ),
+      ...entry,
+      layers: [...entry.layers, { ...textLayer, pixels: textPixels }],
+      frames: entry.frames.map((frame, index) => {
+        const isActiveFrame = frame.id === state.activeFrameId || (!state.activeFrameId && index === 0);
+        return {
+          ...frame,
+          layerIds: [...new Set([...frame.layerIds, textLayer.id])],
+          cels: { ...(frame.cels ?? {}), [textLayer.id]: isActiveFrame ? textPixels : [...textLayer.pixels] },
+        };
+      }),
     }))));
+    setTimeout(() => set({ activeLayerId: textLayer.id, selection, tool: "move", movePreview: null }), 0);
   },
   flipSelectionX: () => set({ clipboard: get().clipboard ? flipClipX(get().clipboard!) : get().clipboard }),
   flipSelectionY: () => set({ clipboard: get().clipboard ? flipClipY(get().clipboard!) : get().clipboard }),

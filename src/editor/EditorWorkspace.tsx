@@ -28,6 +28,7 @@ import {
   PenLine,
   Pipette,
   Search,
+  RotateCcw,
   RotateCw,
   Scissors,
   Square,
@@ -452,6 +453,14 @@ export const EditorWorkspace = () => {
             <button onClick={() => useAppStore.getState().duplicateAsset(asset.id)}><CopyPlus size={15} /> Duplicate</button>
             <button onClick={() => useAppStore.getState().resizeActiveAsset(assetWidth, assetHeight)}>Resize</button>
           </div>
+          <div className="button-row">
+            <button onClick={() => useAppStore.getState().rotateActiveAsset("ccw")} title="Rotate active image 90 degrees left">
+              <RotateCcw size={15} /> Left
+            </button>
+            <button onClick={() => useAppStore.getState().rotateActiveAsset("cw")} title="Rotate active image 90 degrees right">
+              <RotateCw size={15} /> Right
+            </button>
+          </div>
           <div className="resize-preset-row" aria-label="Canvas size presets">
             <button onClick={() => resizeCanvasTo(asset.width * 2, asset.height * 2)}>2x</button>
             {canvasPresets.map((size) => (
@@ -523,7 +532,7 @@ export const EditorWorkspace = () => {
             <button onClick={() => setPixelText(pixelText.toLowerCase())}>Lowercase</button>
             <button onClick={() => setPixelText("")}>Clear</button>
           </div>
-          <p className="hint">Uses the current color and stamps at the selection top-left.</p>
+          <p className="hint">Creates a new movable text layer at the selection top-left.</p>
         </section>
         <section className="panel">
           <h2><WandSparkles size={16} /> Starter Templates</h2>

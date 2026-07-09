@@ -304,3 +304,13 @@ export const rotateClip = (clip: { width: number; height: number; pixels: string
     return clip.pixels[indexAt(y, clip.height - 1 - x, clip.width)];
   }),
 });
+
+export const rotatePixels = (pixels: string[], width: number, height: number, direction: "cw" | "ccw") =>
+  Array.from({ length: width * height }, (_, i) => {
+    const newWidth = height;
+    const x = i % newWidth;
+    const y = Math.floor(i / newWidth);
+    return direction === "cw"
+      ? pixels[indexAt(y, height - 1 - x, width)] ?? "transparent"
+      : pixels[indexAt(width - 1 - y, x, width)] ?? "transparent";
+  });

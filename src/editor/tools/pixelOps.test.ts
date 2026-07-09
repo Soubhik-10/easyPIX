@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustColor, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, setPixel } from "./pixelOps";
+import { adjustColor, clearSelectionPixels, copySelection, ditherBrush, drawBrush, drawLine, flipClipX, floodFill, magicWandSelection, pastePixels, pixelPerfectPoints, replaceColor, resizePixels, rotateClip, rotatePixels, setPixel } from "./pixelOps";
 import type { PixelLayer } from "../../projects/types";
 
 const blank = (width: number, height: number) => Array.from({ length: width * height }, () => "transparent");
@@ -55,6 +55,12 @@ describe("pixel operations", () => {
     expect(rotateClip(clip)).toMatchObject({ width: 1, height: 2 });
     const pasted = pastePixels({ ...layer, pixels: blank(2, 2) }, 2, 2, 0, 1, clip);
     expect(pasted.slice(2, 4)).toEqual(["#111111", "#222222"]);
+  });
+
+  it("rotates full rectangular pixel grids", () => {
+    const pixels = ["a", "b", "c", "d", "e", "f"];
+    expect(rotatePixels(pixels, 2, 3, "cw")).toEqual(["e", "c", "a", "f", "d", "b"]);
+    expect(rotatePixels(pixels, 2, 3, "ccw")).toEqual(["b", "d", "f", "a", "c", "e"]);
   });
 
   it("selects connected same-color pixels with magic wand bounds", () => {
