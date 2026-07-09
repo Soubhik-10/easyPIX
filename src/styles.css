@@ -2216,6 +2216,7 @@ button.active,
 
   .easypix-hero {
     min-height: auto;
+    overflow: visible;
   }
 }
 
@@ -3664,6 +3665,22 @@ input.range-fill::-moz-range-thumb {
 }
 
 @media (max-width: 720px) {
+  .easypix-home {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+    padding: 10px;
+  }
+
+  .easypix-hero {
+    padding: 10px;
+  }
+
+  .hero-content {
+    min-height: 0;
+    gap: 10px;
+  }
+
   .hero-copy-block {
     padding-top: 14px;
   }
@@ -3671,5 +3688,47 @@ input.range-fill::-moz-range-thumb {
   .hero-copy-block h1 {
     font-size: clamp(44px, 15vw, 72px);
     line-height: 1;
+  }
+
+  .launcher-main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .launcher-left-stack {
+    gap: 10px;
+  }
+
+  .pixel-garden-panel {
+    min-height: 118px;
+    max-height: 132px;
+  }
+
+  .pixel-garden-clouds {
+    top: 12px;
+    transform: scale(0.78);
+    transform-origin: top left;
+  }
+
+  .pixel-garden-pixels {
+    inset: 8px 12px 42px;
+  }
+
+  .pixel-garden-ground {
+    height: 30px;
+  }
+
+  .pixel-garden-plants {
+    left: 16px;
+    right: 16px;
+    bottom: 24px;
+    height: 54px;
+    transform: scale(0.78);
+    transform-origin: bottom center;
+  }
+
+  .pixel-garden-tools,
+  .pixel-garden-sign {
+    display: none;
   }
 }
