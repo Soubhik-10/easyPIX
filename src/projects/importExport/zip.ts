@@ -3,6 +3,11 @@ import type { PixelAsset, PixelLayer, PixelProject } from "../types";
 import { layersForFrame } from "../../editor/canvas/renderers";
 
 export const DEFAULT_PNG_EXPORT_SCALE = 4;
+const EXPORT_METADATA = {
+  software: "easyPIX",
+  source: "https://github.com/Soubhik-10/easyPIX",
+  comment: "Created with easyPIX.",
+};
 
 const compositeAssetToDataUrl = (asset: PixelAsset, layerIds?: string[], scale = 1, frameId?: string) => {
   const canvas = document.createElement("canvas");
@@ -32,6 +37,73 @@ const drawLayer = (ctx: CanvasRenderingContext2D, layer: PixelLayer, width: numb
   }
   ctx.restore();
 };
+
+const crcTable = Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit += 1) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  return crc >>> 0;
+});
+
+const crc32 = (bytes: Uint8Array) => {
+  let crc = 0xffffffff;
+  bytes.forEach((byte) => {
+    crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  });
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const uint32Bytes = (value: number) => new Uint8Array([
+  (value >>> 24) & 255,
+  (value >>> 16) & 255,
+  (value >>> 8) & 255,
+  value & 255,
+]);
+
+const textChunk = (keyword: string, text: string) => {
+  const type = new TextEncoder().encode("tEXt");
+  const data = new TextEncoder().encode(`${keyword}\0${text}`);
+  const crcInput = new Uint8Array(type.length + data.length);
+  crcInput.set(type);
+  crcInput.set(data, type.length);
+  const chunk = new Uint8Array(4 + type.length + data.length + 4);
+  chunk.set(uint32Bytes(data.length), 0);
+  chunk.set(type, 4);
+  chunk.set(data, 8);
+  chunk.set(uint32Bytes(crc32(crcInput)), 8 + data.length);
+  return chunk;
+};
+
+const addPngMetadata = (bytes: Uint8Array) => {
+  const iendType = new TextEncoder().encode("IEND");
+  let iendOffset = bytes.length - 12;
+  for (let index = 8; index < bytes.length - 12; ) {
+    const length = (bytes[index] << 24) | (bytes[index + 1] << 16) | (bytes[index + 2] << 8) | bytes[index + 3];
+    const typeOffset = index + 4;
+    const isIend = iendType.every((byte, offset) => bytes[typeOffset + offset] === byte);
+    if (isIend) {
+      iendOffset = index;
+      break;
+    }
+    index += 12 + length;
+  }
+  const chunks = [
+    textChunk("Software", EXPORT_METADATA.software),
+    textChunk("Source", EXPORT_METADATA.source),
+    textChunk("Comment", EXPORT_METADATA.comment),
+  ];
+  const metadataLength = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const next = new Uint8Array(bytes.length + metadataLength);
+  next.set(bytes.slice(0, iendOffset), 0);
+  let cursor = iendOffset;
+  chunks.forEach((chunk) => {
+    next.set(chunk, cursor);
+    cursor += chunk.length;
+  });
+  next.set(bytes.slice(iendOffset), cursor);
+  return next;
+};
+
+const pngBytesFromBase64 = (base64: string) => addPngMetadata(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)));
 
 export const validateProjectForExport = (project: PixelProject) => {
   const errors: string[] = [];
@@ -66,9 +138,9 @@ export const exportProjectZip = async (project: PixelProject) => {
   });
   project.assets.forEach((asset) => {
     zip.file(`assets/${asset.id}.json`, JSON.stringify(asset, null, 2));
-    zip.file(`images/${asset.id}.png`, compositeAssetToDataUrl(asset), { base64: true });
+    zip.file(`images/${asset.id}.png`, pngBytesFromBase64(compositeAssetToDataUrl(asset)));
     asset.frames.forEach((frame, index) => {
-      zip.file(`images/${asset.id}-frame-${index + 1}.png`, compositeAssetToDataUrl(asset, frame.layerIds, 1, frame.id), { base64: true });
+      zip.file(`images/${asset.id}-frame-${index + 1}.png`, pngBytesFromBase64(compositeAssetToDataUrl(asset, frame.layerIds, 1, frame.id)));
     });
   });
   project.tilesets.forEach((tileset) => {
@@ -105,14 +177,14 @@ export const downloadBlob = (blob: Blob, filename: string) => {
 
 export const exportAssetPng = (asset: PixelAsset, scale = DEFAULT_PNG_EXPORT_SCALE) => {
   const base64 = compositeAssetToDataUrl(asset, undefined, scale, asset.frames[0]?.id);
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const bytes = pngBytesFromBase64(base64);
   return new Blob([bytes], { type: "image/png" });
 };
 
 export const exportAssetFramePng = (asset: PixelAsset, frameId: string, scale = DEFAULT_PNG_EXPORT_SCALE) => {
   const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
   const base64 = compositeAssetToDataUrl(asset, frame?.layerIds, scale, frame?.id);
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const bytes = pngBytesFromBase64(base64);
   return new Blob([bytes], { type: "image/png" });
 };
 
@@ -123,6 +195,7 @@ export const exportAnimationJson = (asset: PixelAsset) =>
         {
           type: "easyPIX-animation",
           version: 1,
+          generatedBy: EXPORT_METADATA,
           asset: { id: asset.id, name: asset.name, width: asset.width, height: asset.height },
           frames: asset.frames.map((frame, index) => ({
             id: frame.id,
@@ -150,6 +223,7 @@ export const exportEngineJson = (project: PixelProject, target: "generic" | "god
         {
           type: `easyPIX-${target}-export`,
           version: 1,
+          generatedBy: EXPORT_METADATA,
           project: { id: project.id, name: project.name, updatedAt: project.updatedAt },
           assets: project.assets.map((asset) => ({
             id: asset.id,
@@ -209,6 +283,6 @@ export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tile
     ctx.restore();
   });
   const base64 = canvas.toDataURL("image/png").split(",")[1];
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const bytes = pngBytesFromBase64(base64);
   return new Blob([bytes], { type: "image/png" });
 };
