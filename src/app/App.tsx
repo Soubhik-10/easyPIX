@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, BookOpen, Download, FileJson, FolderOpen, Grid3X3, HardDrive, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
+import { type DragEvent, useEffect, useRef, useState } from "react";
+import { AlertTriangle, BookOpen, Boxes, Download, FileJson, FolderOpen, Grid3X3, HardDrive, Image, LayoutGrid, Moon, Palette, Play, Plus, Redo2, Save, Sparkles, Undo2, Upload } from "lucide-react";
 import { projectHealthWarnings, useAppStore } from "./store";
 import { ProjectLibrary } from "../projects/ProjectLibrary";
 import { EditorWorkspace } from "../editor/EditorWorkspace";
@@ -9,6 +9,8 @@ import { SandboxWorkspace } from "../sandbox/SandboxWorkspace";
 import { ImportWorkspace } from "../projects/ImportWorkspace";
 import { HelpWorkspace } from "../help/HelpWorkspace";
 import { PalettesWorkspace } from "../palettes/PalettesWorkspace";
+import { StudioWorkspace } from "../studio/StudioWorkspace";
+import { AssetDock } from "../ui/AssetDock";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetFramePng, exportEngineJson, exportProjectZip, validateProjectForExport } from "../projects/importExport/zip";
 
 export const App = () => {
@@ -255,6 +257,14 @@ export const App = () => {
           ? "Save failed"
           : "Unsaved changes";
 
+  const dropAssetInto = (event: DragEvent<HTMLButtonElement>, target: "editor" | "animation" | "tileset" | "sandbox") => {
+    event.preventDefault();
+    const assetId = event.dataTransfer.getData("application/easypix-asset");
+    if (assetId && project.assets.some((asset) => asset.id === assetId)) useAppStore.getState().selectAsset(assetId);
+    if (target === "sandbox") useAppStore.getState().setSceneBrush("asset");
+    setWorkspace(target);
+  };
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -263,8 +273,11 @@ export const App = () => {
           <span>easyPIX</span>
         </button>
         <nav className="workspace-tabs" aria-label="Workspaces">
-          <button className={workspace === "editor" ? "active" : ""} onClick={() => setWorkspace("editor")} title="Draw and edit pixels" aria-label="Draw">
+          <button className={workspace === "editor" ? "active" : ""} onClick={() => setWorkspace("editor")} onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropAssetInto(event, "editor")} title="Draw and edit pixels" aria-label="Draw">
             <Image size={16} />
+          </button>
+          <button className={workspace === "studio" ? "active" : ""} onClick={() => setWorkspace("studio")} title="Creative Studio and asset library" aria-label="Creative Studio">
+            <Boxes size={16} />
           </button>
           <button className={workspace === "import" ? "active" : ""} onClick={() => setWorkspace("import")} title="Import popular pixel art files" aria-label="Import">
             <Upload size={16} />
@@ -272,13 +285,13 @@ export const App = () => {
           <button className={workspace === "palettes" ? "active" : ""} onClick={() => setWorkspace("palettes")} title="Palette presets and color management" aria-label="Palettes">
             <Palette size={16} />
           </button>
-          <button className={workspace === "animation" ? "active" : ""} onClick={() => setWorkspace("animation")} title="Animation timeline" aria-label="Animate">
+          <button className={workspace === "animation" ? "active" : ""} onClick={() => setWorkspace("animation")} onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropAssetInto(event, "animation")} title="Animation timeline" aria-label="Animate">
             <Play size={16} />
           </button>
-          <button className={workspace === "tileset" ? "active" : ""} onClick={() => setWorkspace("tileset")} title="Tileset previews" aria-label="Tile Check">
+          <button className={workspace === "tileset" ? "active" : ""} onClick={() => setWorkspace("tileset")} onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropAssetInto(event, "tileset")} title="Tileset previews" aria-label="Tile Check">
             <Grid3X3 size={16} />
           </button>
-          <button className={workspace === "sandbox" ? "active" : ""} onClick={() => setWorkspace("sandbox")} title="Sandbox scene" aria-label="Sandbox">
+          <button className={workspace === "sandbox" ? "active" : ""} onClick={() => setWorkspace("sandbox")} onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropAssetInto(event, "sandbox")} title="Sandbox scene" aria-label="Sandbox">
             <LayoutGrid size={16} />
           </button>
           <button className={workspace === "help" ? "active" : ""} onClick={() => setWorkspace("help")} title="Manual and beginner help" aria-label="Manual">
@@ -367,6 +380,7 @@ export const App = () => {
         </section>
       ) : null}
       {workspace === "editor" && <EditorWorkspace />}
+      {workspace === "studio" && <StudioWorkspace />}
       {workspace === "import" && <ImportWorkspace />}
       {workspace === "palettes" && <PalettesWorkspace />}
       {workspace === "animation" && <AnimationWorkspace />}
@@ -376,6 +390,7 @@ export const App = () => {
       <button className="floating-add" onClick={() => useAppStore.getState().addAsset()} title="Add asset">
         <Plus size={20} />
       </button>
+      <AssetDock />
       {leavePromptOpen ? (
         <div className="leave-guard" role="dialog" aria-modal="true" aria-labelledby="leave-guard-title">
           <section className="leave-guard-panel">

@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import { createAsset, createLayer, createProject, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
-import { deleteProject, listProjects, loadProject, saveProject } from "../projects/storage/db";
+import { createAsset, createLayer, createProject, createScene as makeScene, createTemplateAsset, uid, type TemplateKind } from "../projects/factory";
+import { createCharacterAsset, createEffectAsset, createTerrainSetAssets, createUiKitAsset, type EffectKind, type UiKitKind } from "../projects/generators";
+import { deleteProject, deleteProjectRevision, listProjectRevisions, listProjects, loadProject, saveProject, saveProjectRevision, type ProjectRevision } from "../projects/storage/db";
 import { chooseFileSystemProjectFolder, disconnectFileSystemProjectFolder, fileSystemProjectSaveSupported, importFileSystemProjectFolder, writeProjectToFileSystem } from "../projects/storage/fileSystem";
-import type { MovePreview, PixelAsset, PixelLayer, PixelProject, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
+import type { MovePreview, PixelAsset, PixelLayer, PixelProject, Scene, SceneCell, SceneLayer, Selection, ThemePreference, ToolId, Workspace } from "../projects/types";
 import { palettePresetById, setDefaultPalettePresetId } from "../palettes/presets";
 import {
   adjustColor,
@@ -31,6 +32,7 @@ import {
   trimClip,
 } from "../editor/tools/pixelOps";
 import { drawPixelText, measurePixelText } from "../editor/tools/pixelFont";
+import { buildMotionFrames, type MotionRecipe } from "../animation/motionRecipes";
 
 type Clip = { width: number; height: number; pixels: string[] };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -55,6 +57,7 @@ type SceneRotation = 0 | 90 | 180 | 270;
 
 type AppState = {
   projects: PixelProject[];
+  revisions: ProjectRevision[];
   project: PixelProject | null;
   workspace: Workspace;
   activeAssetId: string | null;
@@ -66,6 +69,7 @@ type AppState = {
   sceneFlipX: boolean;
   sceneFlipY: boolean;
   sceneRotation: SceneRotation;
+  sceneScale: number;
   tool: ToolId;
   theme: ThemePreference;
   color: string;
@@ -133,7 +137,16 @@ type AppState = {
   addAssetToTileset: (assetId: string) => void;
   addImportedAssets: (assets: PixelAsset[]) => void;
   addImportedAssetsAsStickers: (assets: PixelAsset[]) => void;
+  addGeneratedEffect: (kind: EffectKind, primary?: string, secondary?: string) => void;
+  addGeneratedCharacter: (name: string, colors: { skin: string; hair: string; shirt: string; trousers: string }) => void;
+  addGeneratedUi: (kind: UiKitKind, accent?: string) => void;
+  createTerrainSet: (assetId: string) => void;
   duplicateAsset: (id: string) => void;
+  toggleAssetFavorite: (id: string) => void;
+  setAssetTags: (id: string, tags: string[]) => void;
+  setAssetPreview: (id: string, preview: NonNullable<PixelAsset["preview"]>) => void;
+  setAssetEffects: (id: string, effects: NonNullable<PixelAsset["effects"]>) => void;
+  setAssetCollision: (id: string, collision?: PixelAsset["collision"]) => void;
   resizeActiveAsset: (width: number, height: number) => void;
   rotateActiveAsset: (direction: "cw" | "ccw") => void;
   trimActiveAsset: () => void;
@@ -177,6 +190,7 @@ type AppState = {
   remapArtToPalette: (paletteId?: string) => void;
   addFrame: () => void;
   makeWalkCycle: (frameCount: 4 | 6 | 8) => void;
+  makeMotionAnimation: (recipe: MotionRecipe) => void;
   duplicateFrame: () => void;
   addAssetAsFrame: (sourceAssetId: string) => void;
   removeFrame: (id: string) => void;
@@ -192,9 +206,25 @@ type AppState = {
   setSceneBrush: (brush: SceneBrush) => void;
   setSceneLayer: (layer: SceneLayer) => void;
   resizeActiveScene: (width: number, height: number, tileSize?: number) => void;
+  createScene: (name?: string) => void;
+  duplicateActiveScene: () => void;
+  removeActiveScene: () => void;
+  selectScene: (id: string) => void;
+  renameActiveScene: (name: string) => void;
+  clearActiveScene: (scope?: SceneLayer | "all") => void;
+  fillActiveScene: () => void;
+  toggleSceneLayerVisibility: (layer: SceneLayer) => void;
+  updateSceneBackground: (patch: Partial<NonNullable<Scene["background"]>>) => void;
+  updateSceneEnvironment: (patch: Partial<NonNullable<Scene["environment"]>>) => void;
+  updateSceneCamera: (patch: Partial<NonNullable<Scene["camera"]>>) => void;
   toggleSceneFlipX: () => void;
   toggleSceneFlipY: () => void;
   rotateSceneBrush: () => void;
+  setSceneScale: (scale: number) => void;
+  loadRevisions: () => Promise<void>;
+  createRevision: (label?: string) => Promise<void>;
+  restoreRevision: (id: string) => Promise<void>;
+  removeRevision: (id: string) => Promise<void>;
   importProject: (project: PixelProject) => Promise<void>;
 };
 
@@ -202,8 +232,9 @@ const withProject = (state: AppState, recipe: (project: PixelProject) => PixelPr
   if (!state.project) return {};
   const base = historyBase ?? state.project;
   const history = state.history[0] === base ? state.history : [base, ...state.history].slice(0, 80);
+  const project = recipe(state.project);
   return {
-    project: recipe(state.project),
+    project: { ...project, updatedAt: new Date().toISOString() },
     history,
     future: [],
     saveStatus: "idle" as const,
@@ -286,11 +317,12 @@ const brushNeedsShadow = (brush: SceneBrush) => brush === "tree" || brush === "b
 const sceneCells = (scene: { width: number; height: number }, cells: SceneCell[]) =>
   Array.from({ length: scene.width * scene.height }, (_, index) => cells[index] ?? null);
 
-const sceneTileRef = (assetId: string, transform: { sceneFlipX: boolean; sceneFlipY: boolean; sceneRotation: SceneRotation }): SceneCell => ({
+const sceneTileRef = (assetId: string, transform: { sceneFlipX: boolean; sceneFlipY: boolean; sceneRotation: SceneRotation; sceneScale?: number }): SceneCell => ({
   assetId,
   flipX: transform.sceneFlipX || undefined,
   flipY: transform.sceneFlipY || undefined,
   rotation: transform.sceneRotation || undefined,
+  scale: transform.sceneScale && transform.sceneScale !== 1 ? transform.sceneScale : undefined,
 });
 
 const lassoBounds = (points: { x: number; y: number }[]): Selection => {
@@ -565,6 +597,7 @@ const selectionAfterClip = (asset: PixelAsset, x: number, y: number, clip: Clip)
 
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
+  revisions: [],
   project: null,
   workspace: "editor",
   activeAssetId: null,
@@ -576,6 +609,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sceneFlipX: false,
   sceneFlipY: false,
   sceneRotation: 0,
+  sceneScale: 1,
   tool: "pencil",
   theme: (localStorage.getItem("pixel-editor-theme") as ThemePreference | null) ?? "system",
   color: "#1f1f29",
@@ -619,6 +653,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       project,
       projects: await listProjects(),
+      revisions: [],
       activeAssetId: project.assets[0]?.id ?? null,
       activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
       activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
@@ -642,6 +677,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     disconnectFileSystemProjectFolder();
     set({
       project,
+      revisions: await listProjectRevisions(project.id),
       activeAssetId: project.assets[0]?.id ?? null,
       activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
       activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
@@ -669,8 +705,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ saveStatus: "saving", saveError: null });
     try {
       await saveProject(project);
+      await saveProjectRevision(project);
       const savedAt = new Date().toISOString();
-      const nextState: Partial<AppState> = { projects: await listProjects(), saveStatus: "saved", lastSavedAt: savedAt, saveError: null };
+      const nextState: Partial<AppState> = {
+        projects: await listProjects(),
+        revisions: await listProjectRevisions(project.id),
+        saveStatus: "saved",
+        lastSavedAt: savedAt,
+        saveError: null,
+      };
       if (get().fileSaveStatus === "connected" || get().fileSaveStatus === "saving") {
         try {
           set({ fileSaveStatus: "saving", fileSaveError: null });
@@ -735,6 +778,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         project,
         projects: await listProjects(),
+        revisions: await listProjectRevisions(project.id),
         activeAssetId: project.assets[0]?.id ?? null,
         activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
         activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
@@ -1033,6 +1077,57 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
     setTimeout(() => set({ activeLayerId: lastLayerId, selection: lastSelection, tool: "move", movePreview: null }), 0);
   },
+  addGeneratedEffect: (kind, primary, secondary) => {
+    const project = get().project;
+    if (!project) return;
+    const asset = { ...createEffectAsset(kind, primary, secondary), paletteId: project.palettes[0]?.id };
+    get().addImportedAssets([asset]);
+    setTimeout(() => set({ workspace: "animation" }), 0);
+  },
+  addGeneratedCharacter: (name, colors) => {
+    const project = get().project;
+    if (!project) return;
+    const asset = { ...createCharacterAsset(name, colors), paletteId: project.palettes[0]?.id };
+    get().addImportedAssets([asset]);
+    setTimeout(() => set({ workspace: "editor" }), 0);
+  },
+  addGeneratedUi: (kind, accent) => {
+    const project = get().project;
+    if (!project) return;
+    const asset = { ...createUiKitAsset(kind, accent), paletteId: project.palettes[0]?.id };
+    get().addImportedAssets([asset]);
+    setTimeout(() => set({ workspace: "editor" }), 0);
+  },
+  createTerrainSet: (assetId) =>
+    set(
+      withProject(get(), (project) => {
+        const source = project.assets.find((asset) => asset.id === assetId);
+        if (!source) return project;
+        const assets = createTerrainSetAssets(source).map((asset) => ({ ...asset, paletteId: source.paletteId ?? project.palettes[0]?.id }));
+        const center = assets[4] ?? assets[0];
+        if (center) setTimeout(() => set({ activeAssetId: center.id, activeLayerId: center.layers[0]?.id ?? null, activeFrameId: center.frames[0]?.id ?? null }), 0);
+        return {
+          ...project,
+          assets: [...project.assets, ...assets],
+          tilesets: project.tilesets.map((tileset, index) =>
+            index === 0 ? { ...tileset, assetIds: [...new Set([...tileset.assetIds, ...assets.map((asset) => asset.id)])] } : tileset,
+          ),
+        };
+      }),
+    ),
+  toggleAssetFavorite: (id) =>
+    set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, favorite: !asset.favorite } : asset)) }))),
+  setAssetTags: (id, tags) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      assets: project.assets.map((asset) => (asset.id === id ? { ...asset, tags: [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))] } : asset)),
+    }))),
+  setAssetPreview: (id, preview) =>
+    set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, preview } : asset)) }))),
+  setAssetEffects: (id, effects) =>
+    set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, effects } : asset)) }))),
+  setAssetCollision: (id, collision) =>
+    set(withProject(get(), (project) => ({ ...project, assets: project.assets.map((asset) => (asset.id === id ? { ...asset, collision } : asset)) }))),
   duplicateAsset: (id) =>
     set(
       withProject(get(), (project) => {
@@ -1700,6 +1795,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         frames,
       };
     }))),
+  makeMotionAnimation: (recipe) =>
+    set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
+      const frames = buildMotionFrames(asset, get().activeFrameId, recipe);
+      setTimeout(() => set({ activeFrameId: frames[0]?.id ?? null, workspace: "animation", isPlaying: true }), 0);
+      return { ...asset, frames };
+    }))),
   duplicateFrame: () =>
     set(withProject(get(), (project) => updateActiveAsset(project, get().activeAssetId, (asset) => {
       const source = asset.frames.find((frame) => frame.id === get().activeFrameId) ?? asset.frames[0];
@@ -1824,7 +1925,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ...normalizedLayers,
               [targetLayer]: normalizedLayers[targetLayer].map((value, i) => (i === index ? sceneTileRef(assetId, state) : value)),
             };
-            if (shadowAssetId) layers.overlay = layers.overlay.map((value, i) => (i === index ? sceneTileRef(shadowAssetId, { sceneFlipX: false, sceneFlipY: false, sceneRotation: 0 }) : value));
+            if (shadowAssetId) layers.overlay = layers.overlay.map((value, i) => (i === index ? sceneTileRef(shadowAssetId, { sceneFlipX: false, sceneFlipY: false, sceneRotation: 0, sceneScale: state.sceneScale }) : value));
             return { ...scene, activeLayer: targetLayer, layers };
           }),
         };
@@ -1863,11 +1964,155 @@ export const useAppStore = create<AppState>((set, get) => ({
         }),
       })),
     ),
+  createScene: (name) =>
+    set(withProject(get(), (project) => {
+      const scene = { ...makeScene(project.scenes[0]?.tileSize ?? 32), name: name?.trim() || `Scene ${project.scenes.length + 1}` };
+      setTimeout(() => set({ activeSceneId: scene.id }), 0);
+      return { ...project, scenes: [...project.scenes, scene] };
+    })),
+  duplicateActiveScene: () =>
+    set(withProject(get(), (project) => {
+      const source = project.scenes.find((scene) => scene.id === get().activeSceneId) ?? project.scenes[0];
+      if (!source) return project;
+      const scene: Scene = {
+        ...JSON.parse(JSON.stringify(source)) as Scene,
+        id: uid("scene"),
+        name: `${source.name} Copy`,
+      };
+      setTimeout(() => set({ activeSceneId: scene.id }), 0);
+      return { ...project, scenes: [...project.scenes, scene] };
+    })),
+  removeActiveScene: () =>
+    set(withProject(get(), (project) => {
+      if (project.scenes.length <= 1) return project;
+      const scenes = project.scenes.filter((scene) => scene.id !== get().activeSceneId);
+      setTimeout(() => set({ activeSceneId: scenes[0]?.id ?? null }), 0);
+      return { ...project, scenes };
+    })),
+  selectScene: (id) => set({ activeSceneId: id }),
+  renameActiveScene: (name) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => (scene.id === get().activeSceneId ? { ...scene, name: name.trim() || "Untitled Scene" } : scene)),
+    }))),
+  clearActiveScene: (scope = "all") =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => {
+        if (scene.id !== get().activeSceneId) return scene;
+        const empty = () => Array.from({ length: scene.width * scene.height }, () => null as SceneCell);
+        if (scope === "all") return { ...scene, layers: { ground: empty(), objects: empty(), overlay: empty() } };
+        return { ...scene, layers: { ...scene.layers, [scope]: empty() } };
+      }),
+    }))),
+  fillActiveScene: () =>
+    set(withProject(get(), (project) => {
+      const state = get();
+      const brush = state.sceneBrush;
+      if (brush === "erase") {
+        const active = project.scenes.find((scene) => scene.id === state.activeSceneId);
+        if (!active) return project;
+        return {
+          ...project,
+          scenes: project.scenes.map((scene) => scene.id === active.id
+            ? { ...scene, layers: { ...scene.layers, [scene.activeLayer]: Array.from({ length: scene.width * scene.height }, () => null) } }
+            : scene),
+        };
+      }
+      let nextProject = project;
+      let assetId = state.activeAssetId;
+      if (brush !== "asset") {
+        const ensured = ensureTemplateAsset(project, brush);
+        nextProject = ensured.project;
+        assetId = ensured.assetId;
+      }
+      if (!assetId) return nextProject;
+      return {
+        ...nextProject,
+        scenes: nextProject.scenes.map((scene) => {
+          if (scene.id !== state.activeSceneId) return scene;
+          const layer = layerForSceneBrush(brush, scene.activeLayer);
+          return {
+            ...scene,
+            activeLayer: layer,
+            layers: {
+              ...scene.layers,
+              [layer]: Array.from({ length: scene.width * scene.height }, () => sceneTileRef(assetId!, state)),
+            },
+          };
+        }),
+      };
+    })),
+  toggleSceneLayerVisibility: (layer) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => scene.id === get().activeSceneId
+        ? { ...scene, layerVisibility: { ground: true, objects: true, overlay: true, ...(scene.layerVisibility ?? {}), [layer]: scene.layerVisibility?.[layer] === false } }
+        : scene),
+    }))),
+  updateSceneBackground: (patch) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => scene.id === get().activeSceneId
+        ? { ...scene, background: { preset: "plain", color: "#e8eadb", accent: "#cbd5cb", ...(scene.background ?? {}), ...patch } }
+        : scene),
+    }))),
+  updateSceneEnvironment: (patch) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => scene.id === get().activeSceneId
+        ? { ...scene, environment: { effect: "none", density: 35, speed: 50, ...(scene.environment ?? {}), ...patch } }
+        : scene),
+    }))),
+  updateSceneCamera: (patch) =>
+    set(withProject(get(), (project) => ({
+      ...project,
+      scenes: project.scenes.map((scene) => scene.id === get().activeSceneId
+        ? { ...scene, camera: { visible: false, width: 16, height: 9, x: 2, y: 2, ...(scene.camera ?? {}), ...patch } }
+        : scene),
+    }))),
   toggleSceneFlipX: () => set({ sceneFlipX: !get().sceneFlipX }),
   toggleSceneFlipY: () => set({ sceneFlipY: !get().sceneFlipY }),
   rotateSceneBrush: () => {
     const next: Record<SceneRotation, SceneRotation> = { 0: 90, 90: 180, 180: 270, 270: 0 };
     set({ sceneRotation: next[get().sceneRotation] });
+  },
+  setSceneScale: (sceneScale) => set({ sceneScale: Math.max(0.5, Math.min(4, sceneScale)) }),
+  loadRevisions: async () => {
+    const project = get().project;
+    set({ revisions: project ? await listProjectRevisions(project.id) : [] });
+  },
+  createRevision: async (label = "Manual snapshot") => {
+    const project = get().project;
+    if (!project) return;
+    await saveProjectRevision(project, label, 0);
+    set({ revisions: await listProjectRevisions(project.id) });
+  },
+  restoreRevision: async (id) => {
+    const revision = get().revisions.find((entry) => entry.id === id);
+    const current = get().project;
+    if (!revision || !current) return;
+    const project = JSON.parse(JSON.stringify({ ...revision.project, id: current.id, name: current.name, updatedAt: new Date().toISOString() })) as PixelProject;
+    await saveProjectRevision(current, "Before restore", 0);
+    await saveProject(project);
+    set({
+      project,
+      activeAssetId: project.assets[0]?.id ?? null,
+      activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
+      activeFrameId: project.assets[0]?.frames[0]?.id ?? null,
+      activeTilesetId: project.tilesets[0]?.id ?? null,
+      activeSceneId: project.scenes[0]?.id ?? null,
+      history: [current, ...get().history].slice(0, 80),
+      future: [],
+      revisions: await listProjectRevisions(project.id),
+      saveStatus: "saved",
+      lastSavedAt: project.updatedAt,
+    });
+  },
+  removeRevision: async (id) => {
+    await deleteProjectRevision(id);
+    const project = get().project;
+    set({ revisions: project ? await listProjectRevisions(project.id) : [] });
   },
   importProject: async (project) => {
     disconnectFileSystemProjectFolder();
@@ -1875,6 +2120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       project,
       projects: await listProjects(),
+      revisions: await listProjectRevisions(project.id),
       activeAssetId: project.assets[0]?.id ?? null,
       activeLayerId: project.assets[0]?.layers[0]?.id ?? null,
       activeFrameId: project.assets[0]?.frames[0]?.id ?? null,

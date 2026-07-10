@@ -1,7 +1,7 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, CopyPlus, Download, Edit3, ExternalLink, FileJson, ImagePlus, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, CopyPlus, Download, Edit3, ExternalLink, FileJson, ImagePlus, Pause, Play, Plus, Sparkles, Trash2, WandSparkles } from "lucide-react";
 import { useAppStore } from "../app/store";
-import { drawPixelLayer, layersForFrame, renderAsset } from "../editor/canvas/renderers";
+import { drawPixelLayer, layersForFrame, renderAnimationFrame, renderAsset } from "../editor/canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAnimationJson, exportAssetFramePng } from "../projects/importExport/zip";
 import type { PixelAsset } from "../projects/types";
 
@@ -36,6 +36,9 @@ export const AnimationWorkspace = () => {
   const [playbackMode, setPlaybackMode] = useState<"loop" | "pingpong">("loop");
   const [videoStatus, setVideoStatus] = useState<"idle" | "exporting" | "ready" | "error">("idle");
   const [videoMessage, setVideoMessage] = useState("");
+  const previewBackground = asset.preview?.background ?? "checker";
+  const previewColor = asset.preview?.color ?? "#7dd3c7";
+  const previewScene = project.scenes.find((scene) => scene.id === asset.preview?.sceneId) ?? project.scenes[0] ?? null;
 
   const exportSpritesheet = () => {
     const canvas = document.createElement("canvas");
@@ -55,16 +58,14 @@ export const AnimationWorkspace = () => {
   };
 
   const drawFrameToCanvas = (canvas: HTMLCanvasElement, frameId: string, scale: number) => {
-    canvas.width = asset.width * scale;
-    canvas.height = asset.height * scale;
-    const ctx = canvas.getContext("2d")!;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.scale(scale, scale);
-    const frame = asset.frames.find((entry) => entry.id === frameId) ?? asset.frames[0];
-    layersForFrame(asset, frame?.id, frame?.layerIds).forEach((layer) => drawPixelLayer(ctx, layer, asset.width, asset.height, 1));
-    ctx.restore();
+    renderAnimationFrame(canvas, asset, scale, {
+      frameId,
+      background: previewBackground,
+      color: previewColor,
+      scene: previewScene,
+      sceneAssets: project.assets,
+      timeMs: performance.now(),
+    });
   };
 
   const exportVideo = async () => {
@@ -123,9 +124,9 @@ export const AnimationWorkspace = () => {
 
   const activeFrame = asset.frames.find((frame) => frame.id === activeFrameId) ?? asset.frames[frameIndex] ?? asset.frames[0];
   const sourceAssets = project.assets.filter((entry) => entry.id !== asset.id);
-  const playbackOrder = playbackMode === "pingpong" && asset.frames.length > 2
+  const playbackOrder = useMemo(() => playbackMode === "pingpong" && asset.frames.length > 2
     ? [...asset.frames.map((_, index) => index), ...asset.frames.slice(1, -1).map((_, index) => asset.frames.length - 2 - index)]
-    : asset.frames.map((_, index) => index);
+    : asset.frames.map((_, index) => index), [asset.frames, playbackMode]);
   const drawFrame = (frameId: string) => {
     useAppStore.getState().setActiveFrame(frameId);
     useAppStore.getState().setWorkspace("editor");
@@ -139,12 +140,13 @@ export const AnimationWorkspace = () => {
 
   useEffect(() => {
     if (!isPlaying) return;
-    const handle = window.setInterval(() => setFrameIndex((current) => {
+    const activeDuration = asset.frames[frameIndex]?.durationMs ?? 160;
+    const handle = window.setTimeout(() => setFrameIndex((current) => {
       const orderIndex = playbackOrder.indexOf(current);
       return playbackOrder[(orderIndex + 1) % playbackOrder.length] ?? 0;
-    }), 1000 / fps);
-    return () => window.clearInterval(handle);
-  }, [fps, isPlaying, playbackOrder]);
+    }), Math.max(30, activeDuration * (8 / fps)));
+    return () => window.clearTimeout(handle);
+  }, [asset.frames, fps, frameIndex, isPlaying, playbackOrder]);
 
   useEffect(() => {
     const index = asset.frames.findIndex((frame) => frame.id === activeFrameId);
@@ -153,8 +155,23 @@ export const AnimationWorkspace = () => {
 
   useEffect(() => {
     const frame = asset.frames[frameIndex] ?? asset.frames[0];
-    if (previewRef.current) renderAsset(previewRef.current, asset, 10, { grid: false, activeLayerIds: frame.layerIds, frameId: frame.id });
-  }, [asset, frameIndex]);
+    let handle = 0;
+    const draw = (time: number) => {
+      if (previewRef.current) renderAnimationFrame(previewRef.current, asset, 10, {
+        frameId: frame.id,
+        background: previewBackground,
+        color: previewColor,
+        scene: previewScene,
+        sceneAssets: project.assets,
+        timeMs: time,
+      });
+      if (previewBackground === "scene" && (previewScene?.environment?.effect !== "none" || project.assets.some((entry) => entry.frames.length > 1))) {
+        handle = window.requestAnimationFrame(draw);
+      }
+    };
+    draw(performance.now());
+    return () => window.cancelAnimationFrame(handle);
+  }, [asset, frameIndex, previewBackground, previewColor, previewScene, project.assets]);
 
   return (
     <section className="workspace animation-layout professional-animation">
@@ -200,6 +217,17 @@ export const AnimationWorkspace = () => {
             <button onClick={() => useAppStore.getState().makeWalkCycle(8)}>Walk 8</button>
           </div>
           <p className="hint">Creates labeled walk frames with editable ghost guides: left foot, passing pose, right foot.</p>
+        </div>
+        <div className="animation-recipe-box motion-recipe-box">
+          <strong><WandSparkles size={15} /> Motion Assist</strong>
+          <div className="animation-preset-row motion-recipe-grid" aria-label="Editable motion recipes">
+            {(["float", "bounce", "shake", "blink", "pulse"] as const).map((recipe) => (
+              <button key={recipe} onClick={() => useAppStore.getState().makeMotionAnimation(recipe)} title={`Build an editable ${recipe} loop from the selected frame`}>
+                {recipe}
+              </button>
+            ))}
+          </div>
+          <p className="hint">Builds six normal editable frames from the selected frame. Undo restores the old timeline.</p>
         </div>
         {activeFrame ? (
           <button onClick={() => drawFrame(activeFrame.id)}>
@@ -251,10 +279,34 @@ export const AnimationWorkspace = () => {
             <h1>{asset.name}</h1>
             <p>{asset.frames.length} frames · {asset.width}x{asset.height}px · selected {activeFrame?.name ?? "none"}</p>
           </div>
-          {activeFrame ? <button onClick={() => drawFrame(activeFrame.id)}><Edit3 size={16} /> Edit in Draw</button> : null}
+          <div className="animation-preview-actions">
+            <label title="Preview background">
+              Background
+              <select
+                value={previewBackground}
+                onChange={(event) => useAppStore.getState().setAssetPreview(asset.id, { ...asset.preview, background: event.target.value as "checker" | "solid" | "scene", color: previewColor, sceneId: previewScene?.id })}
+              >
+                <option value="checker">Checker</option>
+                <option value="solid">Solid color</option>
+                <option value="scene">Project scene</option>
+              </select>
+            </label>
+            {previewBackground === "solid" ? (
+              <input type="color" value={previewColor} onChange={(event) => useAppStore.getState().setAssetPreview(asset.id, { background: "solid", color: event.target.value, sceneId: previewScene?.id })} title="Preview background color" />
+            ) : null}
+            {previewBackground === "scene" ? (
+              <select value={previewScene?.id ?? ""} onChange={(event) => useAppStore.getState().setAssetPreview(asset.id, { background: "scene", color: previewColor, sceneId: event.target.value })} title="Scene used behind animation">
+                {project.scenes.map((scene) => <option value={scene.id} key={scene.id}>{scene.name}</option>)}
+              </select>
+            ) : null}
+            {activeFrame ? <button onClick={() => drawFrame(activeFrame.id)}><Edit3 size={16} /> Edit in Draw</button> : null}
+          </div>
         </div>
         <canvas ref={previewRef} className="pixel-canvas" />
-        {onionSkin && <p className="hint">Onion skin is tracked for frame drawing; use Draw to edit the selected frame, and the selected frame stays active across workspaces.</p>}
+        <div className="animation-preview-status">
+          {onionSkin && <p className="hint">Onion skin is tracked in Draw. Backgrounds are preview-only for PNG sheets and included in video export.</p>}
+          {previewBackground === "scene" ? <span className="status-pill status-ok"><Sparkles size={13} /> Live scene background</span> : null}
+        </div>
       </div>
       <footer className="timeline">
         {asset.frames.map((frame, index) => (

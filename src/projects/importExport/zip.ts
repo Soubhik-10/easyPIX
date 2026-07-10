@@ -1,6 +1,6 @@
 import JSZip from "jszip";
-import type { PixelAsset, PixelLayer, PixelProject } from "../types";
-import { layersForFrame } from "../../editor/canvas/renderers";
+import type { PixelAsset, PixelProject } from "../types";
+import { drawAssetFrame } from "../../editor/canvas/renderers";
 
 export const DEFAULT_PNG_EXPORT_SCALE = 4;
 const EXPORT_METADATA = {
@@ -15,27 +15,23 @@ const compositeAssetToDataUrl = (asset: PixelAsset, layerIds?: string[], scale =
   canvas.height = asset.height * scale;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
-  ctx.scale(scale, scale);
-  layersForFrame(asset, frameId ?? asset.frames[0]?.id, layerIds).forEach((layer) => {
-    if (!layer.visible) return;
-    drawLayer(ctx, layer, asset.width, asset.height);
-  });
+  drawAssetFrame(ctx, asset, scale, frameId ?? asset.frames[0]?.id, layerIds);
   return canvas.toDataURL("image/png").split(",")[1];
 };
 
-const drawLayer = (ctx: CanvasRenderingContext2D, layer: PixelLayer, width: number, height: number) => {
-  ctx.save();
-  ctx.globalAlpha = layer.opacity;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const color = layer.pixels[y * width + x];
-      if (color && color !== "transparent") {
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-  }
-  ctx.restore();
+const animationSheetToDataUrl = (asset: PixelAsset) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = asset.width * Math.max(1, asset.frames.length);
+  canvas.height = asset.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = false;
+  asset.frames.forEach((frame, index) => {
+    ctx.save();
+    ctx.translate(index * asset.width, 0);
+    drawAssetFrame(ctx, asset, 1, frame.id, frame.layerIds);
+    ctx.restore();
+  });
+  return canvas.toDataURL("image/png").split(",")[1];
 };
 
 const crcTable = Array.from({ length: 256 }, (_, index) => {
@@ -231,8 +227,11 @@ export const exportEngineJson = (project: PixelProject, target: "generic" | "god
             width: asset.width,
             height: asset.height,
             pivot: asset.pivot ?? { x: Math.floor(asset.width / 2), y: Math.floor(asset.height / 2) },
+            collision: asset.collision ?? null,
             tags: asset.tags ?? [],
+            effects: asset.effects ?? null,
             image: `images/${asset.id}.png`,
+            spritesheet: `animations/${asset.id}.png`,
             frames: asset.frames.map((frame, index) => ({
               id: frame.id,
               name: frame.name,
@@ -256,6 +255,10 @@ export const exportEngineJson = (project: PixelProject, target: "generic" | "god
             height: scene.height,
             tileSize: scene.tileSize,
             layers: scene.layers,
+            layerVisibility: scene.layerVisibility ?? { ground: true, objects: true, overlay: true },
+            background: scene.background ?? null,
+            environment: scene.environment ?? null,
+            camera: scene.camera ?? null,
           })),
         },
         null,
@@ -264,6 +267,48 @@ export const exportEngineJson = (project: PixelProject, target: "generic" | "god
     ],
     { type: "application/json" },
   );
+
+export const exportGamePackZip = async (project: PixelProject, target: "generic" | "godot" | "phaser" | "unity") => {
+  const errors = validateProjectForExport(project);
+  if (errors.length) throw new Error(errors.join("\n"));
+  const zip = new JSZip();
+  zip.file("game.json", await exportEngineJson(project, target).text());
+  project.assets.forEach((asset) => {
+    zip.file(`images/${asset.id}.png`, pngBytesFromBase64(compositeAssetToDataUrl(asset)));
+    zip.file(`animations/${asset.id}.png`, pngBytesFromBase64(animationSheetToDataUrl(asset)));
+  });
+  project.tilesets.forEach((tileset) => {
+    const assets = tileset.assetIds.map((id) => project.assets.find((asset) => asset.id === id)).filter((asset): asset is PixelAsset => Boolean(asset));
+    if (!assets.length) return;
+    const columns = Math.max(1, Math.ceil(Math.sqrt(assets.length)));
+    const rows = Math.max(1, Math.ceil(assets.length / columns));
+    const canvas = document.createElement("canvas");
+    canvas.width = columns * tileset.tileWidth;
+    canvas.height = rows * tileset.tileHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    assets.forEach((asset, index) => {
+      ctx.save();
+      ctx.translate((index % columns) * tileset.tileWidth, Math.floor(index / columns) * tileset.tileHeight);
+      drawAssetFrame(ctx, asset, 1, asset.frames[0]?.id);
+      ctx.restore();
+    });
+    zip.file(`tilesets/${tileset.id}.png`, pngBytesFromBase64(canvas.toDataURL("image/png").split(",")[1]));
+    zip.file(`tilesets/${tileset.id}.json`, JSON.stringify(tileset, null, 2));
+  });
+  project.scenes.forEach((scene) => zip.file(`scenes/${scene.id}.json`, JSON.stringify(scene, null, 2)));
+  zip.file("README.txt", [
+    `easyPIX ${target} game art pack`,
+    "",
+    "game.json contains asset, animation, pivot, tile, and scene metadata.",
+    "images/ contains still PNG files.",
+    "animations/ contains horizontal spritesheets.",
+    "tilesets/ and scenes/ contain game-ready source data.",
+    "",
+    "Generated by easyPIX: https://github.com/Soubhik-10/easyPIX",
+  ].join("\n"));
+  return zip.generateAsync({ type: "blob" });
+};
 
 export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tileHeight: number, scale = 1) => {
   const columns = Math.max(1, Math.ceil(Math.sqrt(assets.length)));
@@ -277,9 +322,7 @@ export const exportTilesheetPng = (assets: PixelAsset[], tileWidth: number, tile
   assets.forEach((asset, index) => {
     ctx.save();
     ctx.translate((index % columns) * tileWidth, Math.floor(index / columns) * tileHeight);
-    layersForFrame(asset, asset.frames[0]?.id).forEach((layer) => {
-      if (layer.visible) drawLayer(ctx, layer, asset.width, asset.height);
-    });
+    drawAssetFrame(ctx, asset, 1, asset.frames[0]?.id);
     ctx.restore();
   });
   const base64 = canvas.toDataURL("image/png").split(",")[1];

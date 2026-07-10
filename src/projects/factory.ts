@@ -240,6 +240,10 @@ export const createScene = (tileSize = 32): Scene => ({
     objects: Array.from({ length: 20 * 14 }, () => null),
     overlay: Array.from({ length: 20 * 14 }, () => null),
   },
+  layerVisibility: { ground: true, objects: true, overlay: true },
+  background: { preset: "plain", color: "#e8eadb", accent: "#cbd5cb" },
+  environment: { effect: "none", density: 35, speed: 50 },
+  camera: { visible: false, width: 16, height: 9, x: 2, y: 2 },
 });
 
 export const createTileset = (assetId: string): Tileset => ({

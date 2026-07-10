@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Edit3, WandSparkles } from "lucide-react";
 import { useAppStore } from "../app/store";
 import { renderRepeatPreview, renderTilesheet } from "../editor/canvas/renderers";
 import { DEFAULT_PNG_EXPORT_SCALE, downloadBlob, exportAssetPng, exportTilesheetPng } from "../projects/importExport/zip";
@@ -17,12 +17,14 @@ export const TilesetWorkspace = () => {
     .map((id) => project.assets.find((asset) => asset.id === id))
     .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
   const activeAsset = project.assets.find((asset) => asset.id === activeAssetId) ?? assets[0] ?? project.assets[0];
+  const terrainGroup = activeAsset.tags?.find((tag) => tag.startsWith("terrain-set:"));
+  const terrainAssets = terrainGroup ? assets.filter((asset) => asset.tags?.includes(terrainGroup)) : [];
 
   useEffect(() => {
     if (sheetRef.current) renderTilesheet(sheetRef.current, assets, tileset.tileWidth, tileset.tileHeight, 3);
     if (repeatRef.current && activeAsset) renderRepeatPreview(repeatRef.current, activeAsset, 3);
-    if (neighborRef.current && activeAsset) renderTilesheet(neighborRef.current, [activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset], activeAsset.width, activeAsset.height, 3);
-  }, [activeAsset, assets, tileset.tileHeight, tileset.tileWidth]);
+    if (neighborRef.current && activeAsset) renderTilesheet(neighborRef.current, terrainAssets.length === 9 ? terrainAssets : [activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset, activeAsset], activeAsset.width, activeAsset.height, 3);
+  }, [activeAsset, assets, terrainAssets, tileset.tileHeight, tileset.tileWidth]);
 
   return (
     <section className="workspace tileset-layout">
@@ -33,6 +35,12 @@ export const TilesetWorkspace = () => {
         <button onClick={() => project.assets.forEach((asset) => useAppStore.getState().addAssetToTileset(asset.id))}>
           Add all project sprites
         </button>
+        <div className="terrain-builder-box">
+          <strong><WandSparkles size={15} /> Smart Terrain Starter</strong>
+          <p className="hint">Creates nine named, editable corner, edge, and center copies from the active tile.</p>
+          <button onClick={() => useAppStore.getState().createTerrainSet(activeAsset.id)}><WandSparkles size={15} /> Create 3x3 terrain set</button>
+          <button onClick={() => useAppStore.getState().setWorkspace("editor")}><Edit3 size={15} /> Edit active tile</button>
+        </div>
         <p className="hint">Yes: Tile Check can use any sprite from this project. Add one or all, then preview repeats and seams.</p>
         {project.assets.map((asset) => (
           <button key={asset.id} className={asset.id === activeAssetId ? "active asset-row" : "asset-row"} onClick={() => useAppStore.getState().selectAsset(asset.id)}>
@@ -52,6 +60,7 @@ export const TilesetWorkspace = () => {
         <article className="panel preview-panel">
           <h2>Neighbor Preview</h2>
           <canvas ref={neighborRef} />
+          <p className="hint">{terrainAssets.length === 9 ? "Showing this editable 3x3 terrain set." : "Repeating the selected tile until a terrain set is created."}</p>
         </article>
         <article className="panel">
           <h2>Export</h2>

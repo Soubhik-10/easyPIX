@@ -81,6 +81,13 @@ export const writeProjectToFileSystem = async (project: PixelProject) => {
     throw new Error("Folder autosave permission was lost. Choose the project folder again.");
   }
   const snapshot = { ...project, updatedAt: new Date().toISOString() };
+  try {
+    const currentHandle = await activeDirectory.getFileHandle("project.json");
+    const currentFile = await currentHandle.getFile();
+    if (currentFile.size > 0) await writeFile(activeDirectory, "project.backup.json", await currentFile.text());
+  } catch {
+    // A new project folder has no previous snapshot yet.
+  }
   await writeFile(activeDirectory, "project.json", JSON.stringify(snapshot, null, 2));
   await writeFile(
     activeDirectory,
@@ -89,6 +96,7 @@ export const writeProjectToFileSystem = async (project: PixelProject) => {
       "easyPIX project folder",
       "",
       "project.json is autosaved by easyPIX when folder autosave is connected.",
+      "project.backup.json contains the previous successful folder save.",
       "Keep this folder backed up if the artwork matters.",
       "",
       `Project: ${project.name}`,

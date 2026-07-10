@@ -1,6 +1,11 @@
-import { BookOpen, Download, Grid3X3, Image, Layers, Palette, Paintbrush, Play, Upload } from "lucide-react";
+import { BookOpen, Boxes, Download, Grid3X3, Image, Layers, Palette, Paintbrush, Play, Sparkles, Upload } from "lucide-react";
 
 const manualSections = [
+  {
+    icon: Boxes,
+    title: "Creative Studio",
+    body: "Use the searchable asset library to favorite and tag art, send one asset directly to Draw, Animate, Tile Check, Sandbox, or Palettes, generate characters, effects, and game UI, preview game scale, export engine packs, and restore local snapshots.",
+  },
   {
     icon: Paintbrush,
     title: "Draw",
@@ -34,27 +39,32 @@ const manualSections = [
   {
     icon: Grid3X3,
     title: "Tile Check",
-    body: "Tilesheet preview shows the set, Repeat preview shows one tile tiled many times, and Neighbor preview reveals edges. Sandbox scene cells now store tile asset, flip, and rotation metadata.",
+    body: "Tilesheet preview shows the set, Repeat preview shows one tile tiled many times, and Neighbor preview reveals edges. Smart Terrain Starter creates nine named editable corner, edge, and center tiles from the selected art.",
   },
   {
     icon: Play,
     title: "Animate",
-    body: "Add blank frames or duplicate the active frame. Each frame has real cel pixels per layer, so edits stay on the selected frame. Set duration, preview playback, and export spritesheets, JSON, or browser-supported MP4/WebM video.",
+    body: "Add blank frames, project drawings, or duplicate the active frame. Motion Assist creates editable float, bounce, shake, blink, and pulse loops. Preview against a color or live Sandbox scene, then export spritesheets, JSON, or browser-supported MP4/WebM video.",
+  },
+  {
+    icon: Sparkles,
+    title: "Live Effects",
+    body: "Creative Studio can add adjustable outlines, shadows, and tints without changing the original pixels. These settings remain editable, appear in previews, and are included when the asset is exported.",
   },
   {
     icon: BookOpen,
     title: "Scene Creator",
-    body: "Use Sandbox brushes for grass, path, water, trees, bushes, flowers, rocks, and shadows. Paint a quick cozy scene, then export it as PNG or JSON.",
+    body: "Create multiple maps, paint or fill three scene layers, place any project asset, hide layers, flip and rotate cells, resize the world, and clear one layer or everything. Add sky, sunset, night, rain, snow, fireflies, leaves, or embers; animated sprite assets play directly in the scene.",
   },
   {
     icon: Download,
     title: "Save Safety",
-    body: "Chrome/Edge desktop users can choose a real project folder. easyPIX still autosaves in the browser, but also writes project.json to that folder. From Home, use Folder import to reopen the whole protected folder.",
+    body: "Chrome/Edge desktop users can choose a real project folder. easyPIX writes project.json plus the previous project.backup.json there. Creative Studio also keeps recoverable local snapshots; use Folder import from Home to reopen a protected folder.",
   },
   {
     icon: Download,
     title: "Export",
-    body: "PNG is the default export for finished art. Use .pixelzip as a full editable project backup, and import either .pixelzip or a folder-saved project.json from the home screen.",
+    body: "PNG is the default export for finished art. Use .pixelzip as a full editable backup, or export Godot, Unity, and web game packs containing still images, spritesheets, tilesets, scenes, pivots, effects, and metadata.",
   },
 ];
 

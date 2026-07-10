@@ -32,6 +32,18 @@ export type PixelAsset = {
   paletteId?: string;
   tags?: string[];
   pivot?: { x: number; y: number };
+  collision?: { x: number; y: number; width: number; height: number; kind: "solid" | "trigger" };
+  favorite?: boolean;
+  preview?: {
+    background: "checker" | "solid" | "scene";
+    color?: string;
+    sceneId?: string;
+  };
+  effects?: {
+    outline?: { enabled: boolean; color: string };
+    shadow?: { enabled: boolean; color: string; offsetX: number; offsetY: number };
+    tint?: { enabled: boolean; color: string; amount: number };
+  };
 };
 
 export type Tileset = {
@@ -49,6 +61,7 @@ export type SceneTileRef = {
   flipX?: boolean;
   flipY?: boolean;
   rotation?: 0 | 90 | 180 | 270;
+  scale?: number;
 };
 
 export type SceneCell = string | SceneTileRef | null;
@@ -61,6 +74,24 @@ export type Scene = {
   tileSize: number;
   activeLayer: SceneLayer;
   layers: Record<SceneLayer, SceneCell[]>;
+  layerVisibility?: Record<SceneLayer, boolean>;
+  background?: {
+    preset: "plain" | "sky" | "sunset" | "night" | "dungeon" | "transparent";
+    color: string;
+    accent: string;
+  };
+  environment?: {
+    effect: "none" | "rain" | "snow" | "fireflies" | "leaves" | "embers";
+    density: number;
+    speed: number;
+  };
+  camera?: {
+    visible: boolean;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  };
 };
 
 export type PixelProject = {
@@ -93,7 +124,7 @@ export type ToolId =
   | "lasso"
   | "shadow";
 
-export type Workspace = "editor" | "import" | "palettes" | "animation" | "tileset" | "sandbox" | "help";
+export type Workspace = "editor" | "studio" | "import" | "palettes" | "animation" | "tileset" | "sandbox" | "help";
 
 export type ThemePreference = "system" | "light" | "dark";
 
