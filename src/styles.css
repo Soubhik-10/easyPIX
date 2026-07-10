@@ -4884,14 +4884,13 @@ input.range-fill::-moz-range-thumb {
 
 .home-creative-dashboard {
   display: grid;
-  grid-template-columns: minmax(440px, 1.55fr) minmax(270px, 0.72fr) minmax(260px, 0.68fr);
+  grid-template-columns: minmax(440px, 1.65fr) minmax(300px, 0.72fr);
   gap: 12px;
   min-width: 0;
 }
 
 .living-pixel-world,
 .home-launch-panel,
-.home-spark-panel,
 .home-recent-section {
   min-width: 0;
   border: 1px solid var(--app-border);
@@ -5238,8 +5237,7 @@ input.range-fill::-moz-range-thumb {
 @keyframes world-slime-hop { 50% { transform: translateY(-8px) scaleY(1.08); } }
 @keyframes world-rain-fall { to { transform: translate(24px, 310px); } }
 
-.home-launch-panel,
-.home-spark-panel {
+.home-launch-panel {
   display: grid;
   align-content: start;
   gap: 10px;
@@ -5270,47 +5268,6 @@ input.range-fill::-moz-range-thumb {
   justify-content: center;
   min-width: 0;
 }
-
-.home-spark-panel {
-  position: relative;
-  overflow: hidden;
-  color: #f8fafc;
-  background: #111827;
-}
-
-.home-spark-panel > *:not(.spark-pixels) {
-  position: relative;
-  z-index: 2;
-}
-
-.home-spark-panel .hero-kicker { color: #67e8f9; }
-.home-spark-panel h2 { max-width: 280px; margin: 4px 0; font-size: clamp(24px, 3vw, 38px); line-height: 1.05; }
-.home-spark-panel p { max-width: 300px; margin: 0; color: #cbd5e1; line-height: 1.4; }
-.home-spark-panel button { align-self: end; justify-self: start; margin-top: auto; border-color: #e2e8f0; color: #111827; background: #f8fafc; }
-
-.spark-pixels {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.spark-pixels i {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  background: #38bdf8;
-  box-shadow: 9px 9px 0 #fb7185;
-  opacity: 0.65;
-  animation: spark-drift 4s steps(5, end) infinite;
-}
-
-.spark-pixels i:nth-child(1) { left: 76%; top: 12%; }
-.spark-pixels i:nth-child(2) { left: 88%; top: 24%; background: #facc15; animation-delay: -1s; }
-.spark-pixels i:nth-child(3) { left: 67%; top: 42%; background: #a855f7; animation-delay: -2s; }
-.spark-pixels i:nth-child(4) { left: 84%; top: 62%; background: #22c55e; animation-delay: -3s; }
-.spark-pixels i:nth-child(5) { left: 71%; top: 78%; background: #f97316; animation-delay: -0.6s; }
-.spark-pixels i:nth-child(n + 6) { display: none; }
-@keyframes spark-drift { 50% { transform: translate(-8px, -12px) rotate(90deg); opacity: 1; } }
 
 .home-recent-section {
   padding: 14px;
@@ -5469,11 +5426,6 @@ input.range-fill::-moz-range-thumb {
     grid-template-columns: minmax(430px, 1.35fr) minmax(280px, 0.75fr);
   }
 
-  .home-spark-panel {
-    grid-column: 1 / -1;
-    min-height: 190px;
-  }
-
   .home-project-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -5487,8 +5439,6 @@ input.range-fill::-moz-range-thumb {
   .home-creative-dashboard {
     grid-template-columns: 1fr;
   }
-
-  .home-spark-panel { grid-column: auto; }
 
   .home-project-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5530,8 +5480,7 @@ input.range-fill::-moz-range-thumb {
     width: 30px;
   }
 
-  .home-launch-panel,
-  .home-spark-panel {
+  .home-launch-panel {
     min-height: 240px;
   }
 
@@ -5557,8 +5506,7 @@ input.range-fill::-moz-range-thumb {
   .world-hero,
   .world-hero .leg,
   .world-slime,
-  .world-weather i,
-  .spark-pixels i {
+  .world-weather i {
     animation: none !important;
   }
 }

@@ -3,7 +3,6 @@ import {
   Boxes,
   CloudRain,
   CloudSun,
-  Dice5,
   Eraser,
   FolderOpen,
   Grid3X3,
@@ -76,17 +75,6 @@ const heroSeed = Array.from({ length: 14 * 12 }, (_, index) => {
   if ((x === 6 || x === 8) && y === 5) return "#111827";
   return "transparent";
 });
-
-const sparkPrompts = [
-  "A machine with a secret",
-  "A place just after rain",
-  "Something worth guarding",
-  "A doorway at midnight",
-  "A tiny but serious rival",
-  "A useful travelling companion",
-  "An object from another world",
-  "A forgotten room still running",
-];
 
 const ModePixelArt = ({ workspace }: { workspace: Workspace }) => (
   <div className="mode-pixel-art" aria-hidden="true">
@@ -201,7 +189,6 @@ export const ProjectLibrary = () => {
   const theme = useAppStore((state) => state.theme);
   const [name, setName] = useState("Untitled Pixel Project");
   const [importError, setImportError] = useState<string | null>(null);
-  const [promptIndex, setPromptIndex] = useState(0);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -307,13 +294,6 @@ export const ProjectLibrary = () => {
           {(importError || fileSaveError) && <p className="hint status-error-text">{importError ?? fileSaveError}</p>}
         </section>
 
-        <section className="home-spark-panel">
-          <div className="spark-pixels" aria-hidden="true">{Array.from({ length: 24 }, (_, index) => <i key={index} />)}</div>
-          <span className="hero-kicker">Need a direction?</span>
-          <h2>{sparkPrompts[promptIndex]}</h2>
-          <p>Interpret it as a sprite, place, item, animation, or tiny scene.</p>
-          <button onClick={() => setPromptIndex((current) => (current + 1 + Math.floor(Math.random() * (sparkPrompts.length - 1))) % sparkPrompts.length)}><Dice5 size={16} /> Another spark</button>
-        </section>
       </section>
 
       <section className="home-recent-section">
